@@ -1,0 +1,25 @@
+# CMake
+build/
+CMakeFiles/
+CMakeCache.txt
+cmake_install.cmake
+Makefile
+
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+*.out
+*.app
+
+# Vulkan shader binaries
+*.spv
+
+# VS Code
+.vscode/
+*.code-workspace
+
+# OS
+.DS_Store
+Thumbs.db
