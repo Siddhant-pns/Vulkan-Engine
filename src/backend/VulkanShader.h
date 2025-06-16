@@ -6,7 +6,7 @@ namespace backend {
     class VulkanShader {
     public:
         bool LoadFromFile(VkDevice device, const std::string& path);
-        void Destroy();
+        void Destroy(VkDevice device);
 
         VkShaderModule Get() const { return shaderModule; }
 

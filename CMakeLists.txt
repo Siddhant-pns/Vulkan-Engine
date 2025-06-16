@@ -11,10 +11,15 @@ set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
 # Add all source folders
 include_directories(${SRC_DIR})
 include_directories(${INCLUDE_DIR})
+include_directories(${INCLUDE_DIR}/stb) 
 
 # GLFW
 add_subdirectory(external/glfw)
 include_directories(external/glfw/include)
+
+# Include Assimp
+include_directories(${CMAKE_SOURCE_DIR}/external/assimp/include)
+link_directories(${CMAKE_SOURCE_DIR}/external/assimp/lib)
 
 # Vulan
 add_subdirectory(external/volk)
@@ -30,4 +35,10 @@ file(GLOB_RECURSE SRC_FILES
 
 add_executable(VulkanEngine main.cpp ${SRC_FILES})
 
-target_link_libraries(VulkanEngine PRIVATE glfw volk Vulkan::Vulkan)
+add_custom_command(TARGET VulkanEngine POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    ${CMAKE_SOURCE_DIR}/external/assimp/bin/assimp-vc143-mt.dll
+    $<TARGET_FILE_DIR:VulkanEngine>
+)
+
+target_link_libraries(VulkanEngine PRIVATE assimp-vc143-mt glfw volk Vulkan::Vulkan)

@@ -36,4 +36,8 @@ void VulkanCommand::Destroy(VkDevice device) {
     std::cout << "[VulkanCommand] Command pool and buffers destroyed.\n";
 }
 
+VkCommandBuffer VulkanCommand::Get(uint32_t index) const {
+    return commandBuffers.at(index);
+}
+
 }

@@ -31,10 +31,10 @@ bool VulkanShader::LoadFromFile(VkDevice device, const std::string& path) {
     return true;
 }
 
-void VulkanShader::Destroy() {
+void VulkanShader::Destroy(VkDevice device) {
     if (shaderModule != VK_NULL_HANDLE) {
-        // NOTE: You must pass the VkDevice here. Either store it or modify the function.
-        std::cerr << "[VulkanShader] Missing device to destroy shader module\n";
+        vkDestroyShaderModule(device, shaderModule, nullptr);
+        shaderModule = VK_NULL_HANDLE;
     }
 }
 

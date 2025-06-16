@@ -86,6 +86,7 @@ void VulkanDevice::Create(VkInstance instance, VkSurfaceKHR surface) {
 
 
     VkResult result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &device);
+    vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
     backend::CheckVkResult(result, "Failed to create logical device");
 
     std::cout << "[VulkanDevice] Logical device created.\n";

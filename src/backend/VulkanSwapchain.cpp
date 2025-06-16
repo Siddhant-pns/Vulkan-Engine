@@ -4,7 +4,8 @@
 
 namespace backend {
 
-void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface) {
+void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
+                            VkExtent2D size, VkCommandPool commandPool, VkQueue graphicsQueue) {
     std::cout << "[VulkanSwapchain] Creating swapchain...\n";
     deviceRef = device;
     physicalDeviceRef = physicalDevice;
@@ -82,10 +83,91 @@ void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, V
                       "Failed to create image view");
     }
 
+    // Create depth resources
+    depthFormat = FindDepthFormat(physicalDeviceRef);
+    CreateDepthResources(device, physicalDevice, extent, commandPool, graphicsQueue);
+
+
     std::cout << "[VulkanSwapchain] Swapchain created with " << imageViews.size() << " image views.\n";
 }
 
+    VkFormat VulkanSwapchain::FindDepthFormat(VkPhysicalDevice physical) {
+    std::vector<VkFormat> candidates = {
+        VK_FORMAT_D32_SFLOAT,
+        VK_FORMAT_D32_SFLOAT_S8_UINT,
+        VK_FORMAT_D24_UNORM_S8_UINT
+    };
+
+    for (VkFormat format : candidates) {
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(physical, format, &props);
+        if (props.optimalTilingFeatures & VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) {
+            return format;
+        }
+    }
+
+    throw std::runtime_error("Failed to find supported depth format!");
+}
+ 
+void VulkanSwapchain::CreateDepthResources(VkDevice device, VkPhysicalDevice physical, VkExtent2D extent, VkCommandPool commandPool, VkQueue queue) {
+    VkImageCreateInfo imageInfo{};
+    imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
+    imageInfo.imageType = VK_IMAGE_TYPE_2D;
+    imageInfo.extent.width = extent.width;
+    imageInfo.extent.height = extent.height;
+    imageInfo.extent.depth = 1;
+    imageInfo.mipLevels = 1;
+    imageInfo.arrayLayers = 1;
+    imageInfo.format = depthFormat;
+    imageInfo.tiling = VK_IMAGE_TILING_OPTIMAL;
+    imageInfo.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+    imageInfo.usage = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
+    imageInfo.samples = VK_SAMPLE_COUNT_1_BIT;
+    imageInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+
+    CheckVkResult(vkCreateImage(device, &imageInfo, nullptr, &depthImage), "Failed to create depth image");
+
+    VkMemoryRequirements memReqs;
+    vkGetImageMemoryRequirements(device, depthImage, &memReqs);
+
+    VkMemoryAllocateInfo allocInfo{};
+    allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
+    allocInfo.allocationSize = memReqs.size;
+
+    VkPhysicalDeviceMemoryProperties memProps;
+    vkGetPhysicalDeviceMemoryProperties(physical, &memProps);
+
+    for (uint32_t i = 0; i < memProps.memoryTypeCount; ++i) {
+        if ((memReqs.memoryTypeBits & (1 << i)) &&
+            (memProps.memoryTypes[i].propertyFlags & VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT)) {
+            allocInfo.memoryTypeIndex = i;
+            break;
+        }
+    }
+
+    CheckVkResult(vkAllocateMemory(device, &allocInfo, nullptr, &depthImageMemory), "Failed to allocate depth memory");
+    vkBindImageMemory(device, depthImage, depthImageMemory, 0);
+
+    VkImageViewCreateInfo viewInfo{};
+    viewInfo.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO;
+    viewInfo.image = depthImage;
+    viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
+    viewInfo.format = depthFormat;
+    viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+    viewInfo.subresourceRange.levelCount = 1;
+    viewInfo.subresourceRange.layerCount = 1;
+
+    CheckVkResult(vkCreateImageView(device, &viewInfo, nullptr, &depthImageView), "Failed to create depth image view");
+}
+
+
+
 void VulkanSwapchain::Destroy() {
+
+    if (depthImageView) vkDestroyImageView(deviceRef, depthImageView, nullptr);
+    if (depthImage) vkDestroyImage(deviceRef, depthImage, nullptr);
+    if (depthImageMemory) vkFreeMemory(deviceRef, depthImageMemory, nullptr);
+
     for (auto& view : imageViews) {
         vkDestroyImageView(deviceRef, view, nullptr);
     }
@@ -123,5 +205,9 @@ VkExtent2D VulkanSwapchain::ChooseExtent(const VkSurfaceCapabilitiesKHR& capabil
         return {1280, 720}; // fallback if no fixed size
     }
 }
+void VulkanSwapchain::SetCommandPool(VkCommandPool pool) {
+    commandPool = pool;
+}
+
 
 }

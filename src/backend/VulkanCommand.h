@@ -8,7 +8,8 @@ namespace backend {
         void Create(VkDevice device, uint32_t queueFamilyIndex, uint32_t count);
         void Destroy(VkDevice device);
 
-        const std::vector<VkCommandBuffer>& GetBuffers() const { return commandBuffers; }
+        VkCommandBuffer Get(uint32_t index) const;
+        uint32_t GetCount() const { return static_cast<uint32_t>(commandBuffers.size()); }
         VkCommandPool GetPool() const { return commandPool; }
 
     private:
