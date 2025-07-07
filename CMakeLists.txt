@@ -1,44 +1,55 @@
-cmake_minimum_required(VERSION 3.15)
-project(VulkanEngine)
+cmake_minimum_required(VERSION 3.20)
+project(UltimateGfx LANGUAGES CXX)
 
+# C++20 everywhere
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Set paths
-set(SRC_DIR ${CMAKE_SOURCE_DIR}/src)
-set(INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include)
+# ------------------------------------------------------------------------------
+# Fetch Catch2 for unit tests
+# ------------------------------------------------------------------------------
+include(FetchContent)
+FetchContent_Declare(
+  catch2
+  GIT_REPOSITORY https://github.com/catchorg/Catch2.git
+  GIT_TAG        v3.5.2           # or latest stable
+)
+FetchContent_MakeAvailable(catch2)
 
-# Add all source folders
-include_directories(${SRC_DIR})
-include_directories(${INCLUDE_DIR})
-include_directories(${INCLUDE_DIR}/stb) 
+enable_testing()
 
-# GLFW
-add_subdirectory(external/glfw)
-include_directories(external/glfw/include)
-
-# Include Assimp
-include_directories(${CMAKE_SOURCE_DIR}/external/assimp/include)
-link_directories(${CMAKE_SOURCE_DIR}/external/assimp/lib)
-
-# Vulan
-add_subdirectory(external/volk)
-include_directories(external/volk)
-
-find_package(Vulkan REQUIRED)
-
-# Collect source files
-file(GLOB_RECURSE SRC_FILES
-    "${SRC_DIR}/*.cpp"
-    "${SRC_DIR}/*.h"
+# --------------------------------------------------------------------------------
+# Core static library
+# --------------------------------------------------------------------------------
+add_library(core STATIC
+    src/core/util/Logger.cpp
+    src/core/util/Time.cpp
+    src/core/util/FileSystem.cpp
 )
 
-add_executable(VulkanEngine main.cpp ${SRC_FILES})
-
-add_custom_command(TARGET VulkanEngine POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different
-    ${CMAKE_SOURCE_DIR}/external/assimp/bin/assimp-vc143-mt.dll
-    $<TARGET_FILE_DIR:VulkanEngine>
+target_include_directories(core PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}/src        # so #include "core/util/Logger.h" works
 )
 
-target_link_libraries(VulkanEngine PRIVATE assimp-vc143-mt glfw volk Vulkan::Vulkan)
+# --------------------------------------------------------------------------------
+# Sandbox3D demo executable
+# --------------------------------------------------------------------------------
+add_executable(Sandbox3D
+    src/app/Sandbox3D/main.cpp
+)
+target_link_libraries(Sandbox3D PRIVATE core)
+
+# ------------------------------------------------------------------------------
+# Unit-test executable
+# ------------------------------------------------------------------------------
+add_executable(unit_tests
+    tests/test_math.cpp
+    tests/test_util.cpp
+)
+target_link_libraries(unit_tests PRIVATE core Catch2::Catch2WithMain)
+add_test(NAME all_core_tests COMMAND unit_tests)
+
+# --------------------------------------------------------------------------------
+# Convenience
+# --------------------------------------------------------------------------------
+set_target_properties(Sandbox3D PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

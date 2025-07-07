@@ -1,1 +1,0 @@
-// RenderCommand.h placeholder

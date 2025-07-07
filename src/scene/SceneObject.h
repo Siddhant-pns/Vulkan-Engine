@@ -1,1 +1,0 @@
-// SceneObject.h placeholder
