@@ -27,10 +27,15 @@ void VulkanCommand::Create(VkDevice device, uint32_t queueFamilyIndex, uint32_t 
 }
 
 void VulkanCommand::Destroy(VkDevice device) {
-    if (commandPool) {
-        vkDestroyCommandPool(device, commandPool, nullptr);
-        commandPool = VK_NULL_HANDLE;
-    }
+    if (!commandPool) return;
+    if (!commandBuffers.empty())
+        vkFreeCommandBuffers(device, commandPool,
+                             static_cast<uint32_t>(commandBuffers.size()),
+                             commandBuffers.data());
+
+    vkResetCommandPool(device, commandPool, 0);
+    vkDestroyCommandPool(device, commandPool, nullptr);
+    commandPool = VK_NULL_HANDLE;
     commandBuffers.clear();
 
     std::cout << "[VulkanCommand] Command pool and buffers destroyed.\n";

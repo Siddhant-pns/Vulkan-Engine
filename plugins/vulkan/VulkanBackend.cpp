@@ -21,13 +21,10 @@ bool VulkanBackend::init(void* windowHandle)
         core::util::Logger::error("[VK] surface creation failed");
         return false;
     }
+    m_surface = surface;
 
     /* 3. Pick physical GPU + create logical device ----------------- */
     m_device.Create(m_instanceMgr.Get(), surface);
-
-    m_cmd.Create(m_device.logical(),
-             m_device.graphicsFamily(),
-             /*count*/3);                       // alloc primary buffers
 
     m_swap.Create(m_device.physical(), m_device.logical(),
               surface, {1280,720},
@@ -141,13 +138,31 @@ void VulkanBackend::endFrame(CmdHandle h) {
 }
 
 void VulkanBackend::shutdown()
-{ 
-    m_cmd.Destroy(m_device.logical());
-    m_swap.Destroy();
+{
+    if (!m_device.logical()) return;
+
+    /* 1. Let GPU finish all submitted work ----------------------- */
+    vkDeviceWaitIdle(m_device.logical());
+
+    /* 2. Destroy per-frame sync first (not in use now) ----------- */
     for (auto& s : m_sync) s.Destroy(m_device.logical());
-    m_device.Destroy();
-    m_instanceMgr.Destroy();
+    m_sync.clear();
+
+    /* 3. Command buffers & pool ---------------------------------- */
+    m_cmd.Destroy(m_device.logical());            // wrapper frees buffers
+    // if you created an extra pool, destroy it here
+
+    /* 4. Swap-chain & depth -------------------------------------- */
+    m_swap.Destroy();                                // frees image-views, depth
+
+    /* 5. Device, surface, instance ------------------------------- */
+    m_device.Destroy();                           // vkDestroyDevice
+    vkDestroySurfaceKHR(m_instanceMgr.Get(), m_surface, nullptr);
+    m_instanceMgr.Destroy();                         // vkDestroyInstance
+
+    core::util::Logger::info("[VK] backend shut down");
 }
+
 
 TextureHandle VulkanBackend::createTexture(const TextureDesc& d) {
     /* allocate VkImage; use d.width/d.height/format … */

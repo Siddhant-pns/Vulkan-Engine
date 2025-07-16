@@ -49,9 +49,8 @@ private:
     uint32_t       m_curImage = 0;
 
     backend::VulkanInstance m_instanceMgr;
-    // backend::VulkanDevice   m_deviceMgr;
-    // backend::VulkanInstance m_instance;
     backend::VulkanDevice   m_device;
+    VkSurfaceKHR m_surface;
 
     backend::VulkanSwapchain m_swap;         // ← reuse
     backend::VulkanCommand   m_cmd;          // ← reuse
