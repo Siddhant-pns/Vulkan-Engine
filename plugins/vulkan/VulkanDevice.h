@@ -1,5 +1,7 @@
 #pragma once
+#define VK_NO_PROTOTYPES 
 #include <volk.h>
+#include <GLFW/glfw3.h>
 
 namespace backend {
     class VulkanDevice {
@@ -7,14 +9,23 @@ namespace backend {
         void Create(VkInstance instance, VkSurfaceKHR surface);
         void Destroy();
 
-        VkDevice GetLogical() const { return device; }
-        VkPhysicalDevice GetPhysical() const { return physicalDevice; }
-        VkQueue GetGraphicsQueue() const { return graphicsQueue; }
+        VkPhysicalDevice physical()  const noexcept { return m_physicalDevice; }
+        VkDevice         logical()   const noexcept { return m_device; }
+        VkInstance instance() const noexcept { return m_instance; }
+        VkQueue GetGraphicsQueue() const { return m_graphicsQueue; }
+
+        uint32_t graphicsFamily()   const noexcept { return m_graphicsFamily; }
+        // VkQueue  graphicsQueue()    const noexcept { return m_graphicsQueue; }
+
 
     private:
-        VkPhysicalDevice physicalDevice = VK_NULL_HANDLE;
-        VkDevice device = VK_NULL_HANDLE;
-        VkQueue graphicsQueue = VK_NULL_HANDLE;
+        VkInstance m_instance;
+        VkSurfaceKHR m_surface;
+        VkPhysicalDevice  m_physicalDevice{};
+        VkDevice          m_device{};
+        // VkQueue graphicsQueue = VK_NULL_HANDLE;
+        uint32_t m_graphicsFamily = 0;
+        VkQueue  m_graphicsQueue  = VK_NULL_HANDLE;
 
     };
 }

@@ -43,7 +43,8 @@ void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, V
     createInfo.imageColorSpace = surfaceFormat.colorSpace;
     createInfo.imageExtent = extent;
     createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+                            VK_IMAGE_USAGE_TRANSFER_DST_BIT; // for blitting
 
     createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     createInfo.preTransform = capabilities.currentTransform;
@@ -91,7 +92,7 @@ void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, V
     std::cout << "[VulkanSwapchain] Swapchain created with " << imageViews.size() << " image views.\n";
 }
 
-    VkFormat VulkanSwapchain::FindDepthFormat(VkPhysicalDevice physical) {
+VkFormat VulkanSwapchain::FindDepthFormat(VkPhysicalDevice physical) {
     std::vector<VkFormat> candidates = {
         VK_FORMAT_D32_SFLOAT,
         VK_FORMAT_D32_SFLOAT_S8_UINT,

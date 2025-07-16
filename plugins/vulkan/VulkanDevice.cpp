@@ -4,7 +4,6 @@
 #include <vector>
 #include <set>
 #include <cstring> // for strcmp
-#include <vulkan/vulkan_core.h>
 
 const std::vector<const char*> requiredExtensions = {
     VK_KHR_SWAPCHAIN_EXTENSION_NAME
@@ -33,24 +32,24 @@ void VulkanDevice::Create(VkInstance instance, VkSurfaceKHR surface) {
         vkGetPhysicalDeviceProperties(dev, &props);
 
         if (props.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-            physicalDevice = dev;
+            m_physicalDevice = dev;
             std::cout << "[VulkanDevice] Selected discrete GPU: " << props.deviceName << "\n";
             break;
         }
     }
 
-    if (physicalDevice == VK_NULL_HANDLE) {
-        physicalDevice = devices[0];
+    if (m_physicalDevice == VK_NULL_HANDLE) {
+        m_physicalDevice = devices[0];
         VkPhysicalDeviceProperties props;
-        vkGetPhysicalDeviceProperties(physicalDevice, &props);
+        vkGetPhysicalDeviceProperties(m_physicalDevice, &props);
         std::cout << "[VulkanDevice] Fallback GPU selected: " << props.deviceName << "\n";
     }
 
     // Find queue family index with graphics support
     uint32_t queueFamilyCount = 0;
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, nullptr);
+    vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, nullptr);
     std::vector<VkQueueFamilyProperties> queueFamilies(queueFamilyCount);
-    vkGetPhysicalDeviceQueueFamilyProperties(physicalDevice, &queueFamilyCount, queueFamilies.data());
+    vkGetPhysicalDeviceQueueFamilyProperties(m_physicalDevice, &queueFamilyCount, queueFamilies.data());
 
     uint32_t graphicsQueueFamily = -1;
     for (uint32_t i = 0; i < queueFamilyCount; ++i) {
@@ -85,17 +84,20 @@ void VulkanDevice::Create(VkInstance instance, VkSurfaceKHR surface) {
     createInfo.ppEnabledExtensionNames = requiredExtensions.data();
 
 
-    VkResult result = vkCreateDevice(physicalDevice, &createInfo, nullptr, &device);
-    vkGetDeviceQueue(device, graphicsQueueFamily, 0, &graphicsQueue);
-    backend::CheckVkResult(result, "Failed to create logical device");
+    VkResult result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
+    m_graphicsFamily = graphicsQueueFamily;
+    volkLoadDevice(m_device);           
+    vkGetDeviceQueue(m_device, graphicsQueueFamily, 0, &m_graphicsQueue);
+    backend::CheckVkResult(result, "Failed to create logical m_device");
 
-    std::cout << "[VulkanDevice] Logical device created.\n";
+
+    std::cout << "[VulkanDevice] Logical m_device created.\n";
 }
 
 void VulkanDevice::Destroy() {
-    if (device) {
-        vkDestroyDevice(device, nullptr);
-        device = VK_NULL_HANDLE;
+    if (m_device) {
+        vkDestroyDevice(m_device, nullptr);
+        m_device = VK_NULL_HANDLE;
     }
 }
 

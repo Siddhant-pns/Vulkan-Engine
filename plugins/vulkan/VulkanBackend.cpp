@@ -1,205 +1,170 @@
+// VulkanBackend.cpp
+#define VK_NO_PROTOTYPES 
+#include <volk.h> 
 #include "VulkanBackend.h"
 #include "platform/Window.h"
-#include "core/Application.h"
-
-// All Vulkan modules
-#include "VulkanInstance.h"
-#include "VulkanDevice.h"
-#include "VulkanSwapchain.h"
-#include "VulkanPipeline.h"
-#include "VulkanCommand.h"
-#include "VulkanShader.h"
-#include "VulkanDescriptor.h"
-#include "VulkanUniformBuffer.h"
-#include "VulkanTexture.h"
-#include "resources/Mesh.h"
-#include "scene/Camera.h"
-#include "resources/UniformBuffer.h"
-
-#include <volk.h>
-#include <array>
+#include "core/util/Logger.h"
 #include <iostream>
 
-class VulkanBackend::Impl {
-public:
-    backend::VulkanInstance instanceManager;
-    backend::VulkanDevice deviceManager;
-    backend::VulkanSwapchain swapchainManager;
-    backend::VulkanPipeline pipelineManager;
-    backend::VulkanCommand commandManager;
-    backend::VulkanShader vertexShader, fragmentShader;
-    backend::VulkanBuffer vertexBuffer;
-    backend::VulkanDescriptor descriptor;
-    backend::VulkanUniformBuffer uniformBuffer;
-    backend::VulkanTexture texture;
-    backend::Mesh mesh1, mesh2;
-    std::vector<backend::Mesh> meshes;
-    std::vector<glm::mat4> transforms;
+namespace gfx {
 
-    platform::Window window;
-    scene::Camera camera;
+bool VulkanBackend::init(void* windowHandle)
+{
+    auto* win = static_cast<core::platform::Window*>(windowHandle);
 
-    VkSurfaceKHR surface = VK_NULL_HANDLE;
+    /* 1. Create VkInstance (validation on for now) ------------------ */
+    m_instanceMgr.Create(/*enableValidation=*/true);
 
-    static constexpr int MAX_FRAMES_IN_FLIGHT = 3;
-    std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> imageAvailableSemaphores{};
-    std::array<VkSemaphore, MAX_FRAMES_IN_FLIGHT> renderFinishedSemaphores{};
-    std::array<VkFence, MAX_FRAMES_IN_FLIGHT> inFlightFences{};
-    uint32_t currentFrame = 0;
-    uint32_t currentImageIndex = 0;
-
-    void initialize() {
-        window.Init();
-        glm::uvec2 size = window.GetFramebufferSize();
-
-        instanceManager.Create(true);
-        surface = window.CreateVulkanSurface(instanceManager.Get());
-        deviceManager.Create(instanceManager.Get(), surface);
-
-        VkSemaphoreCreateInfo semInfo{ VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };
-        VkFenceCreateInfo fenceInfo{ VK_STRUCTURE_TYPE_FENCE_CREATE_INFO };
-        fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
-        for (int i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i) {
-            vkCreateSemaphore(deviceManager.GetLogical(), &semInfo, nullptr, &imageAvailableSemaphores[i]);
-            vkCreateSemaphore(deviceManager.GetLogical(), &semInfo, nullptr, &renderFinishedSemaphores[i]);
-            vkCreateFence(deviceManager.GetLogical(), &fenceInfo, nullptr, &inFlightFences[i]);
-        }
-
-        VkExtent2D extent = { size.x, size.y };
-        camera.SetViewportSize(extent.width, extent.height);
-
-        commandManager.Create(deviceManager.GetLogical(), 0, MAX_FRAMES_IN_FLIGHT);
-        swapchainManager.Create(deviceManager.GetPhysical(), deviceManager.GetLogical(), surface, extent, commandManager.GetPool(), deviceManager.GetGraphicsQueue());
-
-        pipelineManager.CreateRenderPass(deviceManager.GetLogical(), swapchainManager.GetFormat(), swapchainManager.GetDepthFormat());
-        pipelineManager.CreateFramebuffers(deviceManager.GetLogical(), swapchainManager.GetExtent(), swapchainManager.GetImageViews(), swapchainManager.GetDepthImageView());
-
-        vertexShader.LoadFromFile(deviceManager.GetLogical(), "shaders/basic.vert.spv");
-        fragmentShader.LoadFromFile(deviceManager.GetLogical(), "shaders/basic.frag.spv");
-
-        descriptor.Create(deviceManager.GetLogical());
-        descriptor.Allocate(deviceManager.GetLogical());
-
-        mesh1.LoadFromFile("assets/model1.obj");
-        mesh1.UploadToGPU(deviceManager.GetLogical(), deviceManager.GetPhysical(), commandManager.GetPool(), deviceManager.GetGraphicsQueue());
-        mesh2.LoadFromFile("assets/model2.obj");
-        mesh2.UploadToGPU(deviceManager.GetLogical(), deviceManager.GetPhysical(), commandManager.GetPool(), deviceManager.GetGraphicsQueue());
-        meshes = { mesh1, mesh2 };
-
-        transforms.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(-1.0f, 0.0f, 0.0f)));
-        transforms.push_back(glm::translate(glm::mat4(1.0f), glm::vec3(+1.0f, 0.0f, 0.0f)));
-
-        texture.LoadFromFile(deviceManager.GetLogical(), deviceManager.GetPhysical(), commandManager.GetPool(), deviceManager.GetGraphicsQueue(), "assets/texture.png");
-        descriptor.Update(deviceManager.GetLogical(), texture.GetImageView(), texture.GetSampler());
-
-        uniformBuffer.Create(deviceManager.GetLogical(), deviceManager.GetPhysical(), sizeof(UniformBufferObject), MAX_FRAMES_IN_FLIGHT);
-        for (uint32_t i = 0; i < MAX_FRAMES_IN_FLIGHT; ++i)
-            descriptor.Update(deviceManager.GetLogical(), uniformBuffer.GetDescriptorInfo(i));
-
-        pipelineManager.CreateGraphicsPipeline(
-            deviceManager.GetLogical(),
-            swapchainManager.GetExtent(),
-            pipelineManager.GetRenderPass(),
-            vertexShader.Get(),
-            fragmentShader.Get(),
-            descriptor.GetLayout0(),
-            descriptor.GetLayout1()
-        );
+    /* 2. Make the VkSurface from the GLFW window ------------------- */
+    VkSurfaceKHR surface = win->CreateVulkanSurface(m_instanceMgr.Get());
+    if (surface == VK_NULL_HANDLE) {
+        core::util::Logger::error("[VK] surface creation failed");
+        return false;
     }
 
-    void drawFrame() {
-        if (window.WasResized()) return;
+    /* 3. Pick physical GPU + create logical device ----------------- */
+    m_device.Create(m_instanceMgr.Get(), surface);
 
-        auto device = deviceManager.GetLogical();
-        auto queue = deviceManager.GetGraphicsQueue();
+    m_cmd.Create(m_device.logical(),
+             m_device.graphicsFamily(),
+             /*count*/3);                       // alloc primary buffers
 
-        vkWaitForFences(device, 1, &inFlightFences[currentFrame], VK_TRUE, UINT64_MAX);
-        vkResetFences(device, 1, &inFlightFences[currentFrame]);
+    m_swap.Create(m_device.physical(), m_device.logical(),
+              surface, {1280,720},
+              m_cmd.GetPool(),   // not needed yet
+              m_device.GetGraphicsQueue());
+    m_cmd.Create(m_device.logical(),
+             m_device.graphicsFamily(),
+             static_cast<uint32_t>(m_swap.GetImageViews().size()));
+    m_sync.resize(m_swap.GetImageViews().size());
+    for (auto& s : m_sync)  s.Create(m_device.logical());   // fill TODOs in VulkanSync.cpp
 
-        vkAcquireNextImageKHR(device, swapchainManager.Get(), UINT64_MAX, imageAvailableSemaphores[currentFrame], VK_NULL_HANDLE, &currentImageIndex);
-
-        UniformBufferObject ubo{};
-        ubo.view = camera.GetViewMatrix();
-        ubo.proj = camera.GetProjectionMatrix();
-        ubo.proj[1][1] *= -1;
-        uniformBuffer.Update(device, currentFrame, &ubo, sizeof(ubo));
-
-        VkCommandBuffer cmd = commandManager.Get(currentImageIndex);
-
-        VkCommandBufferBeginInfo beginInfo{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
-        vkBeginCommandBuffer(cmd, &beginInfo);
-
-        std::array<VkClearValue, 2> clears{};
-        clears[0].color = { 0.05f, 0.05f, 0.1f, 1.0f };
-        clears[1].depthStencil = { 1.0f, 0 };
-
-        VkRenderPassBeginInfo rpInfo{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
-        rpInfo.renderPass = pipelineManager.GetRenderPass();
-        rpInfo.framebuffer = pipelineManager.GetFramebuffers()[currentImageIndex];
-        rpInfo.renderArea.extent = swapchainManager.GetExtent();
-        rpInfo.clearValueCount = static_cast<uint32_t>(clears.size());
-        rpInfo.pClearValues = clears.data();
-
-        vkCmdBeginRenderPass(cmd, &rpInfo, VK_SUBPASS_CONTENTS_INLINE);
-        vkCmdBindPipeline(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineManager.GetPipeline());
-
-        for (size_t i = 0; i < meshes.size(); ++i) {
-            VkDescriptorSet sets[] = { descriptor.GetSet0(), descriptor.GetSet1() };
-            vkCmdBindDescriptorSets(cmd, VK_PIPELINE_BIND_POINT_GRAPHICS, pipelineManager.GetPipelineLayout(), 0, 2, sets, 0, nullptr);
-
-            VkBuffer vb[] = { meshes[i].GetVertexBuffer() };
-            VkDeviceSize offset[] = { 0 };
-            vkCmdBindVertexBuffers(cmd, 0, 1, vb, offset);
-            vkCmdBindIndexBuffer(cmd, meshes[i].GetIndexBuffer(), 0, VK_INDEX_TYPE_UINT32);
-            vkCmdPushConstants(cmd, pipelineManager.GetPipelineLayout(), VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &transforms[i]);
-            vkCmdDrawIndexed(cmd, meshes[i].GetIndexCount(), 1, 0, 0, 0);
-        }
-
-        vkCmdEndRenderPass(cmd);
-        vkEndCommandBuffer(cmd);
-
-        VkPipelineStageFlags waitStages[] = { VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT };
-        VkSubmitInfo submit{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
-        submit.waitSemaphoreCount = 1;
-        submit.pWaitSemaphores = &imageAvailableSemaphores[currentFrame];
-        submit.pWaitDstStageMask = waitStages;
-        submit.commandBufferCount = 1;
-        submit.pCommandBuffers = &cmd;
-        submit.signalSemaphoreCount = 1;
-        submit.pSignalSemaphores = &renderFinishedSemaphores[currentFrame];
-
-        vkQueueSubmit(queue, 1, &submit, inFlightFences[currentFrame]);
-
-        VkPresentInfoKHR present{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
-        present.waitSemaphoreCount = 1;
-        present.pWaitSemaphores = &renderFinishedSemaphores[currentFrame];
-        present.swapchainCount = 1;
-        VkSwapchainKHR swp = swapchainManager.Get();
-        present.pSwapchains = &swp;
-        present.pImageIndices = &currentImageIndex;
-        vkQueuePresentKHR(queue, &present);
-
-        currentFrame = (currentFrame + 1) % MAX_FRAMES_IN_FLIGHT;
-    }
-
-    void shutdown() {
-        deviceManager.Destroy();
-        instanceManager.Destroy();
-    }
-};
-
-// -- plugin interface --
-VulkanBackend::VulkanBackend() : pImpl(std::make_unique<Impl>()) {}
-VulkanBackend::~VulkanBackend() = default;
-
-void VulkanBackend::initialize() { pImpl->initialize(); }
-void VulkanBackend::drawFrame()  { pImpl->drawFrame(); }
-void VulkanBackend::shutdown()   { pImpl->shutdown(); }
-
-extern "C" re::IRenderBackend* createPlugin() {
-    return new VulkanBackend();
+    core::util::Logger::info("[VK] instance + device ready (swap-chain TBD)");
+    return true;   // ← success! the main loop will now stay alive
 }
 
-extern "C" void destroyPlugin(re::IRenderBackend* p) {
-    delete p;
+CmdHandle VulkanBackend::beginFrame(){
+    auto& s = m_sync[m_frameIndex];
+    VkSemaphore ws = s.getImageAvailable();
+    VkFence inf = s.getInFlight();
+    vkWaitForFences(m_device.logical(), 1, &inf, VK_TRUE, UINT64_MAX);
+    vkResetFences(m_device.logical(), 1, &inf);
+
+    uint32_t imgIdx;
+    vkAcquireNextImageKHR(m_device.logical(), m_swap.Get(), UINT64_MAX,
+                        s.getImageAvailable(), VK_NULL_HANDLE, &imgIdx);
+
+    m_currentCmd = m_cmd.Get(imgIdx);
+    m_currentImg = imgIdx;
+    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(m_currentCmd, &beginInfo);   // 1-time
+    VkImageMemoryBarrier toDst{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    toDst.oldLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    toDst.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toDst.srcAccessMask = 0;
+    toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toDst.image         = m_swap.CurrentImage(imgIdx);
+    toDst.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0,1,0,1 };
+
+    vkCmdPipelineBarrier(m_currentCmd,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0, 0,nullptr, 0,nullptr, 1,&toDst);
+
+    return { m_currentCmd }; 
+
+ }
+void VulkanBackend::endFrame(CmdHandle h) {
+    auto& f = m_sync[m_frameIndex];
+    VkSemaphore ws = f.getImageAvailable();
+    VkSemaphore rf = f.getRenderFinished();
+    VkFence inf = f.getInFlight();
+
+    VkImageMemoryBarrier toPresent{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    toPresent.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toPresent.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    toPresent.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toPresent.dstAccessMask = 0;
+    toPresent.image         = m_swap.CurrentImage(m_currentImg);
+    toPresent.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0,1,0,1 };
+
+    vkCmdPipelineBarrier(m_currentCmd,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0, 0,nullptr, 0,nullptr, 1,&toPresent);
+
+    vkEndCommandBuffer(m_currentCmd);
+
+    // wait on imageAvailable, signal renderFinished
+    /* submit */
+    VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+    VkSubmitInfo submit{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
+    submit.waitSemaphoreCount   = 1;
+    submit.pWaitSemaphores      = &ws;
+    submit.pWaitDstStageMask    = &waitStage;
+    submit.commandBufferCount   = 1;
+    submit.pCommandBuffers      = &m_currentCmd;
+    submit.signalSemaphoreCount = 1;
+    submit.pSignalSemaphores    = &rf;
+
+    vkQueueSubmit(m_device.GetGraphicsQueue(), 1, &submit, f.getInFlight());
+
+    // wait on renderFinished, index=currentImg
+    /* present */
+    VkPresentInfoKHR pres{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
+    pres.waitSemaphoreCount = 1;
+    pres.pWaitSemaphores    = &rf;
+    pres.swapchainCount     = 1;
+    pres.pSwapchains = &m_swap.GetHandle();
+    pres.pImageIndices      = &m_currentImg;
+    
+    vkQueuePresentKHR(m_device.GetGraphicsQueue(), &pres);
+
+    m_frameIndex = (m_frameIndex + 1) % m_sync.size();
+    std::cout << "[VK] Frame " << m_frameIndex << " ended." << std::endl;
+ }
+
+ void VulkanBackend::clearColor(CmdHandle h,
+                               gfx::TextureHandle,
+                               const float rgba[4])
+{
+    VkCommandBuffer cmd = static_cast<VkCommandBuffer>(h.ptr);
+    VkImage img = m_swap.CurrentImage(m_currentImg);
+
+    VkClearColorValue mag{{rgba[0],rgba[1],rgba[2],rgba[3]}};
+    VkImageSubresourceRange sr{VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
+
+    vkCmdClearColorImage(cmd, img,
+                         VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,   // ← layout
+                         &mag, 1, &sr);
 }
+
+void VulkanBackend::shutdown()
+{ 
+    m_cmd.Destroy(m_device.logical());
+    m_swap.Destroy();
+    for (auto& s : m_sync) s.Destroy(m_device.logical());
+    m_device.Destroy();
+    m_instanceMgr.Destroy();
+}
+
+TextureHandle VulkanBackend::createTexture(const TextureDesc& d) {
+    /* allocate VkImage; use d.width/d.height/format … */
+    VkImage img = VK_NULL_HANDLE;   // TODO real creation
+    uint32_t id = m_nextHandle++;
+    m_images[id] = img;
+    return {id};
+}
+BufferHandle VulkanBackend::createBuffer(const BufferDesc& d) {
+    VkBuffer buf = VK_NULL_HANDLE;  // TODO real creation
+    uint32_t id = m_nextHandle++;
+    m_buffers[id] = buf;
+    return {id};
+}
+void VulkanBackend::destroyTexture(TextureHandle h) { m_images.erase(h.id); }
+void VulkanBackend::destroyBuffer (BufferHandle h)  { m_buffers.erase(h.id); }
+
+IRenderBackend* createVulkanBackend() { return new VulkanBackend(); }
+
+} // namespace gfx

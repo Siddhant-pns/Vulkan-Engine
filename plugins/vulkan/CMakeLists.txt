@@ -1,50 +1,44 @@
 cmake_minimum_required(VERSION 3.16)
-project(VulkanBackend LANGUAGES CXX)
+project(vulkan_backend LANGUAGES CXX)
 
-# Enable shared library for plugin
-add_library(vulkan_backend SHARED
+# ------------------------------------------------------------------------------
+# Vulkan backend sources
+# ------------------------------------------------------------------------------
+add_library(vulkan_backend STATIC
+    VulkanAllocator.cpp
     VulkanBackend.cpp
-    VulkanBackend.h
-
-    # Add all core Vulkan modules here
-    VulkanBuffer.cpp  VulkanBuffer.h
-    VulkanCommand.cpp VulkanCommand.h
-    VulkanDescriptor.cpp VulkanDescriptor.h
-    VulkanDevice.cpp VulkanDevice.h
-    VulkanInstance.cpp VulkanInstance.h
-    VulkanPipeline.cpp VulkanPipeline.h
-    VulkanShader.cpp VulkanShader.h
-    VulkanSwapchain.cpp VulkanSwapchain.h
-    VulkanTexture.cpp VulkanTexture.h
-    VulkanUniformBuffer.cpp VulkanUniformBuffer.h
-    VulkanUtils.cpp VulkanUtils.h
+    VulkanDevice.cpp
+    VulkanInstance.cpp
+    VulkanUtils.cpp
+    VulkanSwapchain.cpp
+    VulkanCommand.cpp
+    VulkanSync.cpp
 )
 
-# Define include paths
+# ------------------------------------------------------------------------------
+# Public include dirs (engine headers + extern stuff)
+# ------------------------------------------------------------------------------
 target_include_directories(vulkan_backend
-    PRIVATE
-        ${CMAKE_CURRENT_SOURCE_DIR}
-        ${CMAKE_SOURCE_DIR}/engine
-        ${CMAKE_SOURCE_DIR}/engine/platform
-        ${CMAKE_SOURCE_DIR}/resources
-        ${CMAKE_SOURCE_DIR}/scene
+    PUBLIC
+        ../../src                  # backend/include/...
+        ../../extern/vma           # vk_mem_alloc.h
 )
 
+# ------------------------------------------------------------------------------
+# Link libraries
+#   * volk  – single static lib defined in root CMakeLists
+#   * Vulkan::Vulkan – loader import lib from SDK (needed by volk at link-time)
+#   * glfw  – window/surface creation
+#   * vma   – if you made VMA its own static library target
+# ------------------------------------------------------------------------------
+find_package(Vulkan REQUIRED)      # gives Vulkan::Vulkan
+
+target_link_libraries(vulkan_backend
+    PUBLIC  backend_iface core volk
+    PRIVATE Vulkan::Vulkan glfw vma
+)
+
+# ------------------------------------------------------------------------------
 # Compile definitions
-target_compile_definitions(vulkan_backend PRIVATE VK_NO_PROTOTYPES)
-
-# Link external Vulkan + Volk
-find_package(Vulkan REQUIRED)
-target_link_libraries(vulkan_backend PRIVATE Vulkan::Vulkan)
-
-# Optional: link Volk (if built separately)
-# target_link_libraries(vulkan_backend PRIVATE volk)
-
-# Set the output file name and suffix for platform
-set_target_properties(vulkan_backend PROPERTIES
-    OUTPUT_NAME "vulkan_backend"
-    PREFIX ""                                # No "lib" prefix
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
+# Volk already defines VK_NO_PROTOTYPES for itself; just inherit it.
+# ------------------------------------------------------------------------------

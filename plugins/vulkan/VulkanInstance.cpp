@@ -1,9 +1,10 @@
-#define VK_NO_PROTOTYPES
+#define VK_NO_PROTOTYPES 
 #include <volk.h>
 
 #include "VulkanInstance.h"
 #include "VulkanUtils.h"
 #include <GLFW/glfw3.h>
+#include "core/util/Logger.h"
 #include <iostream>
 #include <vector>
 #include <cstring>
@@ -15,6 +16,7 @@ const std::vector<const char*> validationLayers = {
 // Implementations will be filled in later
 namespace backend {
     void backend::VulkanInstance::Create(bool enableValidation) {
+
     std::cout << "[VulkanInstance] Creating Vulkan instance...\n";
 
     // ✅ Initialize Volk loader BEFORE any Vulkan function is called

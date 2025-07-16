@@ -11,6 +11,10 @@ namespace backend {
         void Destroy();
 
         VkSwapchainKHR Get() const { return swapchain; }
+        const VkSwapchainKHR& GetHandle() const {
+            return swapchain;
+        }
+
         // Add these under public:
         VkFormat GetFormat() const { return imageFormat; }
         void SetCommandPool(VkCommandPool pool);
@@ -20,10 +24,15 @@ namespace backend {
         VkImageView GetDepthImageView() const { return depthImageView; }
         VkFormat GetDepthFormat() const { return depthFormat; }
 
+        VkImage CurrentImage(uint32_t frameIndex) const {
+            return images[frameIndex];
+        }
+
     private:
         VkCommandPool commandPool = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDeviceRef = VK_NULL_HANDLE;
         VkSwapchainKHR swapchain = VK_NULL_HANDLE;
+        VkSwapchainKHR m_swapchainHandle = VK_NULL_HANDLE;
         VkDevice deviceRef = VK_NULL_HANDLE;
 
         std::vector<VkImage> images;

@@ -44,6 +44,17 @@ struct Vec {
     constexpr T lengthSquared() const noexcept { return dot(*this); }
     T           length()        const noexcept { return std::sqrt(lengthSquared()); }
     Vec         normalized()    const noexcept { return *this * (T(1) / length()); }
+
+    /* Vec3-specific cross product */
+    template<std::size_t M=N, typename = std::enable_if_t<M==3>>
+    constexpr Vec cross(const Vec& rhs) const noexcept {
+        return {
+            v[1]*rhs[2] - v[2]*rhs[1],
+            v[2]*rhs[0] - v[0]*rhs[2],
+            v[0]*rhs[1] - v[1]*rhs[0]
+        };
+    }
+
 };
 
 /* convenient aliases */

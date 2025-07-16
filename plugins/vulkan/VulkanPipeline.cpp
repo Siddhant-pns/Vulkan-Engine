@@ -1,6 +1,6 @@
 #include "VulkanPipeline.h"
 #include "VulkanUtils.h"
-#include "scene/Vertex.h"
+#include "Vertex.h"
 #include <iostream>
 
 namespace backend {

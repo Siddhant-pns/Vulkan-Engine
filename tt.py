@@ -2,10 +2,10 @@ import os
 from pathlib import Path
 
 # Folders to search
-search_dirs = ["engine", "plugins"]
+search_dirs = [ "plugins"]
 
 # Output file
-output_file = "all_files.txt"
+output_file = "vulkan_files.txt"
 
 def list_all_files(root_dirs):
     """Recursively lists all files in given root_dirs with their modification time."""
