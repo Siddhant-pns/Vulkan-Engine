@@ -76,38 +76,24 @@ gfx::CmdHandle VulkanBackend::beginFrame() {
 
     /* ----- ensure image is COLOR_ATTACHMENT_OPTIMAL ----- */
     VkImageLayout old = m_imgLayout[m_currentImg];
-    if (old != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 
-        VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-        VkImageMemoryBarrier bar{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-        bar.dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
-        bar.oldLayout       = old;
-        bar.newLayout       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-        bar.image           = m_swap.CurrentImage(m_currentImg);
-        bar.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+    // Transition from TRANSFER_DST_OPTIMAL → COLOR_ATTACHMENT_OPTIMAL
+    VkImageMemoryBarrier toClear{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    toClear.oldLayout = m_imgLayout[m_currentImg];
+    toClear.newLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    toClear.srcAccessMask = 0;
+    toClear.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+    toClear.image = m_swap.CurrentImage(m_currentImg);
+    toClear.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
 
-        if (old == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-            /* From PRESENT → COLOR_ATTACHMENT */
-            bar.srcAccessMask = 0;                          // nothing to wait for
-            srcStage          = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
-            std::cout << "[VK] Transition PRESENT_SRC_KHR → TRANSFER_DST_OPTIMAL\n";
-        } else { /* UNDEFINED → COLOR_ATTACHMENT */
-            bar.srcAccessMask = 0;
-            srcStage          = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-            std::cout << "[VK] Transition UNDEFINED → TRANSFER_DST_OPTIMAL\n";
-        }
+    vkCmdPipelineBarrier(m_currentCmd,
+        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0, nullptr, 0, nullptr, 1, &toClear);
 
-        vkCmdPipelineBarrier(
-            m_currentCmd,
-            srcStage,                                   // srcStageMask
-            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // dstStageMask
-            0,
-            0, nullptr,
-            0, nullptr,
-            1, &bar);
+    m_imgLayout[m_currentImg] = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
 
-        m_imgLayout[m_currentImg] = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    }
 
     return { m_currentCmd };
 }
@@ -162,6 +148,34 @@ void VulkanBackend::endFrame(gfx::CmdHandle /*h*/) {
                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,   // ← layout
                          &mag, 1, &sr);
 }
+
+void VulkanBackend::transition(gfx::CmdHandle cmd,
+                               gfx::TextureHandle tex,
+                               int oldLayout, int newLayout,
+                               int srcAccess, int dstAccess,
+                               int srcStage, int dstStage)
+{
+    VkCommandBuffer vkCmd = static_cast<VkCommandBuffer>(cmd.ptr);
+    VkImage vkImage = m_swap.CurrentImage(m_currentImg);
+
+    VkImageMemoryBarrier barrier{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+    barrier.oldLayout     = static_cast<VkImageLayout>(oldLayout);
+    barrier.newLayout     = static_cast<VkImageLayout>(newLayout);
+    barrier.srcAccessMask = static_cast<VkAccessFlags>(srcAccess);
+    barrier.dstAccessMask = static_cast<VkAccessFlags>(dstAccess);
+    barrier.image         = vkImage;
+    barrier.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+
+    vkCmdPipelineBarrier(
+        vkCmd,
+        static_cast<VkPipelineStageFlags>(srcStage),
+        static_cast<VkPipelineStageFlags>(dstStage),
+        0,
+        0, nullptr, 0, nullptr, 1, &barrier);
+
+    m_imgLayout[m_currentImg] = static_cast<VkImageLayout>(newLayout);
+}
+
 
 void VulkanBackend::preShutdown()
 {

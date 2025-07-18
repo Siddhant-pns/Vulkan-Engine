@@ -47,6 +47,12 @@ public:
                                 uint32_t firstIdx, int32_t vtxOffset,
                                 uint32_t firstInst) = 0;
 
+    virtual void transition(gfx::CmdHandle cmd,
+                        gfx::TextureHandle tex,
+                        int oldLayout, int newLayout,
+                        int srcAccess, int dstAccess,
+                        int srcStage, int dstStage) = 0;
+
 };
 
 /* factory every plugin must export */

@@ -74,13 +74,13 @@ void RenderGraph::execute(uint64_t frame, gfx::CmdHandle cmd)
 {
     for (int idx : m_execOrder) {
         auto& p = m_passes[idx];
-        core::util::Logger::info("[RG] Pass %s (idx=%d)", p.name.c_str(), idx);
+        // core::util::Logger::info("[RG] Pass %s (idx=%d)", p.name.c_str(), idx);
 
         RenderPass::ExecCtx ctx{frame, this,
                                 gfx::RenderDevice::backend(),  // device
                                 cmd};                          // cmd handle
         if (p.onExecute) p.onExecute(ctx);
-        std::cout << "[RG] Pass " << p.name << " executed." << std::endl;
+        // std::cout << "[RG] Pass " << p.name << " executed." << std::endl;
     }
 }
 

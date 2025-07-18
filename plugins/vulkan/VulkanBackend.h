@@ -60,7 +60,11 @@ public:
     VkQueue                      graphicsQ()   { return m_device.GetGraphicsQueue(); }
 
 
-    
+    void transition(gfx::CmdHandle cmd,
+                        gfx::TextureHandle tex,
+                        int oldLayout, int newLayout,
+                        int srcAccess, int dstAccess,
+                        int srcStage, int dstStage) override;
 
 private:
     uint32_t      m_nextHandle = 1;

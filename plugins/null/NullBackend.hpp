@@ -29,6 +29,10 @@ public:
     void cmdDrawIndexed(CmdHandle,
                         uint32_t, uint32_t, uint32_t, int32_t, uint32_t) override {}
 
+   void transition(gfx::CmdHandle,
+                             gfx::TextureHandle,
+                             int, int, int, int, int, int) override{}
+
 };
 
 /* exported factory */

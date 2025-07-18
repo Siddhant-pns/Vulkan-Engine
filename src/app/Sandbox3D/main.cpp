@@ -32,6 +32,16 @@ int main() {
         auto& res = ctx.graph->resource("color");
         ctx.device->clearColor(ctx.cmd,
             std::get<gfx::TextureHandle>(res.handle), mag);
+
+        ctx.device->transition(ctx.cmd,
+            std::get<gfx::TextureHandle>(res.handle),
+            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+            VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+            VK_ACCESS_TRANSFER_WRITE_BIT,
+            VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+            VK_PIPELINE_STAGE_TRANSFER_BIT,
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT);
+
     });
 
     graph.addPass("cube", gfx::PassType::Graphics,
@@ -71,7 +81,7 @@ int main() {
 
     while (!win.shouldClose()) {
     // while (frame < 3) {  // just 4 frames for demo
-        std::cout << "Frame: " << frame << std::endl;
+        // std::cout << "Frame: " << frame << std::endl;
         win.pollEvents();
 
         auto cmd = gfx::RenderDevice::beginFrame();   // returns gfx::CmdHandle
