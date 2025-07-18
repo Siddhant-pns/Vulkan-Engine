@@ -13,6 +13,13 @@ add_library(vulkan_backend STATIC
     VulkanSwapchain.cpp
     VulkanCommand.cpp
     VulkanSync.cpp
+    VulkanPipeline.cpp
+    VulkanDescriptor.cpp
+    VulkanUniformBuffer.cpp
+    VulkanTexture.cpp
+    VulkanShader.cpp
+    VulkanBuffer.cpp
+    VulkanTexture.cpp
 )
 
 # ------------------------------------------------------------------------------
@@ -34,7 +41,7 @@ target_include_directories(vulkan_backend
 find_package(Vulkan REQUIRED)      # gives Vulkan::Vulkan
 
 target_link_libraries(vulkan_backend
-    PUBLIC  backend_iface core volk
+    PUBLIC  backend_iface core volk stb
     PRIVATE Vulkan::Vulkan glfw vma
 )
 

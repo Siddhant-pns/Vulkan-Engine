@@ -42,6 +42,10 @@ add_subdirectory(extern/vma)
 
 add_subdirectory(extern/glfw)
 
+add_subdirectory(extern/stb)
+
+add_subdirectory(extern/glm)
+
 # --------------------------------------------------------------------------------
 # Core static library
 # --------------------------------------------------------------------------------
@@ -65,7 +69,6 @@ add_library(platform STATIC
 )
 target_link_libraries(platform PUBLIC glfw volk)
 
-
 # --------------------------------------------------------------------------------
 # Sandbox3D demo executable
 # --------------------------------------------------------------------------------
@@ -73,6 +76,14 @@ add_executable(Sandbox3D
     src/app/Sandbox3D/main.cpp
 )
 target_link_libraries(Sandbox3D PRIVATE core backend_iface null_backend vulkan_backend)
+
+target_sources(Sandbox3D PRIVATE
+    src/app/Sandbox3D/CubeSetup.cpp
+)
+target_include_directories(Sandbox3D PRIVATE
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/app/Sandbox3D  # for CubeSetup.hpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/src/graphics/data  # for CubeVerts.hpp
+)
 
 
 # ------------------------------------------------------------------------------

@@ -9,7 +9,7 @@ void VulkanPipeline::CreateRenderPass(VkDevice device, VkFormat swapchainFormat,
     VkAttachmentDescription colorAttachment{};
     colorAttachment.format = swapchainFormat;
     colorAttachment.samples = VK_SAMPLE_COUNT_1_BIT;
-    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_CLEAR;
+    colorAttachment.loadOp = VK_ATTACHMENT_LOAD_OP_LOAD; // Load existing content
     colorAttachment.storeOp = VK_ATTACHMENT_STORE_OP_STORE;
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
@@ -164,7 +164,7 @@ void VulkanPipeline::CreateGraphicsPipeline(VkDevice device, VkExtent2D extent, 
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.lineWidth = 1.0f;
     raster.cullMode = VK_CULL_MODE_BACK_BIT;
-   raster.frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE; 
+    raster.frontFace = VK_FRONT_FACE_CLOCKWISE; 
 
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;

@@ -32,7 +32,7 @@ public:
     void compile();                 // topological sort + basic validation
 
     /* Per-frame */
-    void execute(uint64_t frame, CmdHandle cmd);
+    void execute(uint64_t frame, gfx::CmdHandle cmd);
 
 private:
     void topoSort(int node, std::vector<int>& out, std::vector<int>& mark);

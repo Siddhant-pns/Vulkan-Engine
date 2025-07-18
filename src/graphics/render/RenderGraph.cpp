@@ -70,7 +70,7 @@ void RenderGraph::topoSort(int node, std::vector<int>& out, std::vector<int>& ma
 }
 
 /* ---------------------------------------------------------------- Execute */
-void RenderGraph::execute(uint64_t frame, CmdHandle cmd)
+void RenderGraph::execute(uint64_t frame, gfx::CmdHandle cmd)
 {
     for (int idx : m_execOrder) {
         auto& p = m_passes[idx];

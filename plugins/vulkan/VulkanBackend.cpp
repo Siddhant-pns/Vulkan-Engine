@@ -1,10 +1,18 @@
 // VulkanBackend.cpp
 #define VK_NO_PROTOTYPES 
 #include <volk.h> 
+#include <glm/glm.hpp>
 #include "VulkanBackend.h"
 #include "platform/Window.h"
 #include "core/util/Logger.h"
 #include <iostream>
+
+using gfx::CmdHandle;
+
+static VkCommandBuffer toCmd(CmdHandle h)
+{
+    return static_cast<VkCommandBuffer>(h.ptr);
+}
 
 namespace gfx {
 
@@ -30,6 +38,11 @@ bool VulkanBackend::init(void* windowHandle)
               surface, {1280,720},
               m_cmd.GetPool(),   // not needed yet
               m_device.GetGraphicsQueue());
+
+    extent = m_swap.GetExtent();
+    m_imgLayout.assign(m_swap.GetImageViews().size(),
+                       VK_IMAGE_LAYOUT_UNDEFINED);
+
     m_cmd.Create(m_device.logical(),
              m_device.graphicsFamily(),
              static_cast<uint32_t>(m_swap.GetImageViews().size()));
@@ -40,7 +53,8 @@ bool VulkanBackend::init(void* windowHandle)
     return true;   // ← success! the main loop will now stay alive
 }
 
-CmdHandle VulkanBackend::beginFrame(){
+gfx::CmdHandle VulkanBackend::beginFrame() {
+    /* ----- acquire & reset sync ----- */
     auto& s = m_sync[m_frameIndex];
     VkSemaphore ws = s.getImageAvailable();
     VkFence inf = s.getInFlight();
@@ -48,53 +62,65 @@ CmdHandle VulkanBackend::beginFrame(){
     vkResetFences(m_device.logical(), 1, &inf);
 
     uint32_t imgIdx;
-    vkAcquireNextImageKHR(m_device.logical(), m_swap.Get(), UINT64_MAX,
-                        s.getImageAvailable(), VK_NULL_HANDLE, &imgIdx);
+    vkAcquireNextImageKHR(
+        m_device.logical(), m_swap.Get(), UINT64_MAX,
+        s.getImageAvailable(), VK_NULL_HANDLE, &imgIdx);
 
+    /* ----- start command buffer ----- */
     m_currentCmd = m_cmd.Get(imgIdx);
     m_currentImg = imgIdx;
-    VkCommandBufferBeginInfo beginInfo{VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO};
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    vkBeginCommandBuffer(m_currentCmd, &beginInfo);   // 1-time
-    VkImageMemoryBarrier toDst{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-    toDst.oldLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    toDst.newLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    toDst.srcAccessMask = 0;
-    toDst.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    toDst.image         = m_swap.CurrentImage(imgIdx);
-    toDst.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0,1,0,1 };
 
-    vkCmdPipelineBarrier(m_currentCmd,
-        VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0, 0,nullptr, 0,nullptr, 1,&toDst);
+    VkCommandBufferBeginInfo bi{ VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO };
+    bi.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    vkBeginCommandBuffer(m_currentCmd, &bi);
 
-    return { m_currentCmd }; 
+    /* ----- ensure image is COLOR_ATTACHMENT_OPTIMAL ----- */
+    VkImageLayout old = m_imgLayout[m_currentImg];
+    if (old != VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {
 
- }
-void VulkanBackend::endFrame(CmdHandle h) {
+        VkPipelineStageFlags srcStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+        VkImageMemoryBarrier bar{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
+        bar.dstAccessMask   = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+        bar.oldLayout       = old;
+        bar.newLayout       = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+        bar.image           = m_swap.CurrentImage(m_currentImg);
+        bar.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0, 1, 0, 1 };
+
+        if (old == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
+            /* From PRESENT → COLOR_ATTACHMENT */
+            bar.srcAccessMask = 0;                          // nothing to wait for
+            srcStage          = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
+            std::cout << "[VK] Transition PRESENT_SRC_KHR → TRANSFER_DST_OPTIMAL\n";
+        } else { /* UNDEFINED → COLOR_ATTACHMENT */
+            bar.srcAccessMask = 0;
+            srcStage          = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
+            std::cout << "[VK] Transition UNDEFINED → TRANSFER_DST_OPTIMAL\n";
+        }
+
+        vkCmdPipelineBarrier(
+            m_currentCmd,
+            srcStage,                                   // srcStageMask
+            VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT, // dstStageMask
+            0,
+            0, nullptr,
+            0, nullptr,
+            1, &bar);
+
+        m_imgLayout[m_currentImg] = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    }
+
+    return { m_currentCmd };
+}
+
+void VulkanBackend::endFrame(gfx::CmdHandle /*h*/) {
     auto& f = m_sync[m_frameIndex];
     VkSemaphore ws = f.getImageAvailable();
     VkSemaphore rf = f.getRenderFinished();
     VkFence inf = f.getInFlight();
 
-    VkImageMemoryBarrier toPresent{ VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER };
-    toPresent.oldLayout     = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
-    toPresent.newLayout     = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-    toPresent.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-    toPresent.dstAccessMask = 0;
-    toPresent.image         = m_swap.CurrentImage(m_currentImg);
-    toPresent.subresourceRange = { VK_IMAGE_ASPECT_COLOR_BIT, 0,1,0,1 };
-
-    vkCmdPipelineBarrier(m_currentCmd,
-        VK_PIPELINE_STAGE_TRANSFER_BIT,
-        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
-        0, 0,nullptr, 0,nullptr, 1,&toPresent);
-
     vkEndCommandBuffer(m_currentCmd);
 
-    // wait on imageAvailable, signal renderFinished
-    /* submit */
+    /* ----- submit + present ----- */
     VkPipelineStageFlags waitStage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
     VkSubmitInfo submit{ VK_STRUCTURE_TYPE_SUBMIT_INFO };
     submit.waitSemaphoreCount   = 1;
@@ -107,22 +133,22 @@ void VulkanBackend::endFrame(CmdHandle h) {
 
     vkQueueSubmit(m_device.GetGraphicsQueue(), 1, &submit, f.getInFlight());
 
-    // wait on renderFinished, index=currentImg
-    /* present */
     VkPresentInfoKHR pres{ VK_STRUCTURE_TYPE_PRESENT_INFO_KHR };
     pres.waitSemaphoreCount = 1;
     pres.pWaitSemaphores    = &rf;
     pres.swapchainCount     = 1;
-    pres.pSwapchains = &m_swap.GetHandle();
+    pres.pSwapchains        = &m_swap.GetHandle();
     pres.pImageIndices      = &m_currentImg;
-    
+
     vkQueuePresentKHR(m_device.GetGraphicsQueue(), &pres);
 
-    m_frameIndex = (m_frameIndex + 1) % m_sync.size();
-    std::cout << "[VK] Frame " << m_frameIndex << " ended." << std::endl;
- }
+    /* ----- update tracking & advance frame ----- */
+    m_imgLayout[m_currentImg] = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
- void VulkanBackend::clearColor(CmdHandle h,
+    m_frameIndex = (m_frameIndex + 1) % m_sync.size();
+}
+
+ void VulkanBackend::clearColor(gfx::CmdHandle h,
                                gfx::TextureHandle,
                                const float rgba[4])
 {
@@ -137,12 +163,25 @@ void VulkanBackend::endFrame(CmdHandle h) {
                          &mag, 1, &sr);
 }
 
+void VulkanBackend::preShutdown()
+{
+    // This is called before shutdown() to allow for any pre-shutdown tasks.
+    // Step 1: Wait for in-flight frames to finish
+     for (auto& s : m_sync)
+        vkWaitForFences(m_device.logical(), 1, &s.inFlight, VK_TRUE, UINT64_MAX);
+
+    // Step 2: Reset command pools to release resource references
+    m_cmd.Reset(m_device.logical());
+
+    // Step 3: Wait for all device queues to be idle
+    vkDeviceWaitIdle(m_device.logical());
+
+    core::util::Logger::info("[VK] Pre-shutdown tasks completed.");
+}
+
 void VulkanBackend::shutdown()
 {
     if (!m_device.logical()) return;
-
-    /* 1. Let GPU finish all submitted work ----------------------- */
-    vkDeviceWaitIdle(m_device.logical());
 
     /* 2. Destroy per-frame sync first (not in use now) ----------- */
     for (auto& s : m_sync) s.Destroy(m_device.logical());
@@ -179,6 +218,96 @@ BufferHandle VulkanBackend::createBuffer(const BufferDesc& d) {
 }
 void VulkanBackend::destroyTexture(TextureHandle h) { m_images.erase(h.id); }
 void VulkanBackend::destroyBuffer (BufferHandle h)  { m_buffers.erase(h.id); }
+
+
+void VulkanBackend::cmdBeginRenderPass(CmdHandle h,
+                                       void* pipeVoid,
+                                       uint32_t fbIdx)
+{
+    auto* pipe = static_cast<backend::VulkanPipeline*>(pipeVoid);
+    VkCommandBuffer cmd = toCmd(h);
+
+    VkFramebuffer  fb     = pipe->GetFramebuffers()[fbIdx];
+    // VkExtent2D     extent = pipe->GetExtent();
+
+    /* Optional clear values (depth is ignored by our pass anyway) */
+    VkClearValue clears[2]{};
+    clears[0].color          = { 0.f, 0.f, 0.f, 1.f };
+    clears[1].depthStencil   = { 1.f, 0 };
+
+    VkRenderPassBeginInfo rpbi{ VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO };
+    rpbi.renderPass      = pipe->GetRenderPass();
+    rpbi.framebuffer     = fb;
+    rpbi.renderArea.extent = extent;
+    rpbi.clearValueCount = 2;
+    rpbi.pClearValues    = clears;
+
+    vkCmdBeginRenderPass(cmd, &rpbi, VK_SUBPASS_CONTENTS_INLINE);
+}
+void VulkanBackend::cmdEndRenderPass(CmdHandle h)
+{
+    vkCmdEndRenderPass(toCmd(h));
+}
+
+/* 2. pipeline & descriptor binding -----------------------------------------*/
+void VulkanBackend::cmdBindPipeline(CmdHandle h, void* pipePtr)
+{
+    VkPipeline p = reinterpret_cast<VkPipeline>(pipePtr);
+    vkCmdBindPipeline(toCmd(h),
+        VK_PIPELINE_BIND_POINT_GRAPHICS, p);
+}
+void VulkanBackend::cmdBindDescriptorSets(CmdHandle h,
+                                          void* layoutPtr, void* set0Ptr, void* set1Ptr)
+{
+    VkPipelineLayout layout   = reinterpret_cast<VkPipelineLayout>(layoutPtr);
+    VkDescriptorSet  sets[2]{
+        reinterpret_cast<VkDescriptorSet>(set0Ptr),
+        reinterpret_cast<VkDescriptorSet>(set1Ptr)
+    };
+    vkCmdBindDescriptorSets(toCmd(h),
+        VK_PIPELINE_BIND_POINT_GRAPHICS,
+        layout, 0, 2, sets, 0, nullptr);
+}
+
+/* 3. vertex / index buffers -------------------------------------------------*/
+void VulkanBackend::cmdBindVertexBuffer(CmdHandle h, void* bufPtr)
+{
+    VkBuffer vb = reinterpret_cast<VkBuffer>(bufPtr);
+    VkDeviceSize offs = 0;
+    vkCmdBindVertexBuffers(toCmd(h), 0, 1, &vb, &offs);
+}
+void VulkanBackend::cmdBindIndexBuffer(CmdHandle h, void* bufPtr,
+                                       int indexType)
+{
+    VkBuffer ib      = reinterpret_cast<VkBuffer>(bufPtr);
+    VkIndexType type = static_cast<VkIndexType>(indexType);
+    vkCmdBindIndexBuffer(toCmd(h), ib, 0, type);
+}
+
+/* 4. push constants (MVP) ---------------------------------------------------*/
+void VulkanBackend::cmdPushConstants(CmdHandle h,
+                                     void* layoutPtr,
+                                     const glm::mat4& mvp)
+{
+    VkPipelineLayout layout = reinterpret_cast<VkPipelineLayout>(layoutPtr);
+    vkCmdPushConstants(toCmd(h), layout,
+    VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(glm::mat4), &mvp);
+}
+
+/* 5. draw call --------------------------------------------------------------*/
+void VulkanBackend::cmdDrawIndexed(CmdHandle h,
+                                   uint32_t idxCnt, uint32_t instCnt,
+                                   uint32_t firstIdx, int32_t vtxOffset,
+                                   uint32_t firstInst)
+{
+    vkCmdDrawIndexed(toCmd(h),
+        idxCnt, instCnt, firstIdx, vtxOffset, firstInst);
+}
+
+
+
+
+
 
 IRenderBackend* createVulkanBackend() { return new VulkanBackend(); }
 

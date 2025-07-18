@@ -7,6 +7,9 @@ namespace backend {
 
 void VulkanUniformBuffer::Create(VkDevice device, VkPhysicalDevice physical, size_t bufferSize, size_t inFrameCount) {
     frameCount = inFrameCount;
+    m_count = inFrameCount;  
+    m_stride = alignTo(bufferSize, 256);                // std140 align
+    m_size   = m_stride * m_count;
     buffers.resize(frameCount);
     memories.resize(frameCount);
 
@@ -30,9 +33,13 @@ void VulkanUniformBuffer::Create(VkDevice device, VkPhysicalDevice physical, siz
         vkGetPhysicalDeviceMemoryProperties(physical, &memProps);
 
         bool found = false;
+        const VkMemoryPropertyFlags wanted =
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+
         for (uint32_t j = 0; j < memProps.memoryTypeCount; ++j) {
-            if ((memReq.memoryTypeBits & (1 << j)) &&
-                (memProps.memoryTypes[j].propertyFlags & (VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT))) {
+            if ( (memReq.memoryTypeBits & (1u << j)) &&
+                ( (memProps.memoryTypes[j].propertyFlags & wanted) == wanted ) ) {
                 allocInfo.memoryTypeIndex = j;
                 found = true;
                 break;

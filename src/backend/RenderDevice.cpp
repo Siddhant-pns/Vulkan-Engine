@@ -4,7 +4,7 @@
 
 namespace gfx {
 
-static CmdHandle g_currCmd;
+static gfx::CmdHandle g_currCmd;
 
 static IRenderBackend* makeBackend(const char* name) {
     if (strcmp(name, "null") == 0)    return createNullBackend();
@@ -12,11 +12,11 @@ static IRenderBackend* makeBackend(const char* name) {
     return nullptr;
 }
 
-CmdHandle RenderDevice::beginFrame() {
+gfx::CmdHandle RenderDevice::beginFrame() {
     g_currCmd = s_backend->beginFrame();
     return g_currCmd;
 }
-void RenderDevice::endFrame(CmdHandle h) { s_backend->endFrame(h); }
+void RenderDevice::endFrame(gfx::CmdHandle h) { s_backend->endFrame(h); }
 gfx::IRenderBackend* RenderDevice::backend() { return s_backend.get(); }
 
 bool RenderDevice::init(void* native, const char* backendName) {
@@ -27,7 +27,7 @@ bool RenderDevice::init(void* native, const char* backendName) {
     return true;
 }
 
-CmdHandle RenderDevice::currentCmd() { return g_currCmd; }
+gfx::CmdHandle RenderDevice::currentCmd() { return g_currCmd; }
 
 
 void RenderDevice::shutdown() {

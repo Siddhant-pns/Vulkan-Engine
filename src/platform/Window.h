@@ -18,6 +18,8 @@ public:
     void* nativeHandle() const { return m_window; }   // GLFWwindow*
 
     VkSurfaceKHR CreateVulkanSurface(VkInstance instance);
+    int width()  const { int w,h; glfwGetFramebufferSize(m_window,&w,&h); return w; }
+    int height() const { int w,h; glfwGetFramebufferSize(m_window,&w,&h); return h; }
 
 private:
     GLFWwindow* m_window{};

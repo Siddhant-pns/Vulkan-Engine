@@ -3,6 +3,7 @@
 #include "VulkanDevice.h"
 
 namespace backend {
+
     class VulkanSync {
     public:
         void Create(VkDevice device);
@@ -11,10 +12,11 @@ namespace backend {
         VkSemaphore getRenderFinished() const { return renderFinished; }
         VkFence getInFlight() const { return inFlight; }
 
+        VkFence inFlight = VK_NULL_HANDLE;
+
     private:
         backend::VulkanDevice   m_device;
         VkSemaphore imageAvailable = VK_NULL_HANDLE;
         VkSemaphore renderFinished = VK_NULL_HANDLE;
-        VkFence inFlight = VK_NULL_HANDLE;
     };
 }

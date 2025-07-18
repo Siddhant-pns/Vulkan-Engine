@@ -12,9 +12,12 @@ public:
     static bool init(void* nativeWindowHandle,
                     const char* backendName = "vulkan");
     static void shutdown();
+    static void preShutdown(){
+        if (s_backend) s_backend->preShutdown();
+    }
 
-    static CmdHandle beginFrame();
-    static void           endFrame(CmdHandle);
+    static gfx::CmdHandle beginFrame();
+    static void           endFrame(gfx::CmdHandle);
 
     /* resource helpers forwarded to backend */
     static gfx::TextureHandle createTexture(const gfx::TextureDesc& d) {
@@ -23,7 +26,7 @@ public:
     static gfx::BufferHandle createBuffer(const gfx::BufferDesc& d)  {
         return s_backend->createBuffer(d);
     }
-    static CmdHandle currentCmd();   
+    static gfx::CmdHandle currentCmd();   
     static gfx::IRenderBackend* backend();      // declaration
 
 private:

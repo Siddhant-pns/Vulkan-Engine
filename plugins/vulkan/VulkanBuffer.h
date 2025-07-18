@@ -11,7 +11,8 @@ namespace backend {
                     VkDeviceSize size, VkBufferUsageFlags usage,
                     VkMemoryPropertyFlags properties);
 
-        void Upload(const void* data, VkDeviceSize size);
+        void Upload(const void* data, VkDeviceSize size,
+                    VkCommandPool pool, VkQueue graphicsQ);
 
         void Destroy(VkDevice device);
 
@@ -24,6 +25,7 @@ namespace backend {
         VkDevice deviceRef = VK_NULL_HANDLE;
         VkPhysicalDevice physicalDeviceRef = VK_NULL_HANDLE;
         VkDeviceSize bufferSize = 0;
+        VkMemoryPropertyFlags memFlags{0};
 
         uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     };

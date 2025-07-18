@@ -206,6 +206,13 @@ VkExtent2D VulkanSwapchain::ChooseExtent(const VkSurfaceCapabilitiesKHR& capabil
         return {1280, 720}; // fallback if no fixed size
     }
 }
+// if (capabilities.currentExtent.width != UINT32_MAX) {
+//         extent = capabilities.currentExtent; // Already defined by surface
+//     } else {
+        
+//         extent.width  = std::clamp((uint32_t)win->width(), capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+//         extent.height = std::clamp((uint32_t)win->height(), capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+//     }
 void VulkanSwapchain::SetCommandPool(VkCommandPool pool) {
     commandPool = pool;
 }

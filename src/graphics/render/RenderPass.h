@@ -23,7 +23,7 @@ struct RenderPass {
         uint64_t               frame;
         class RenderGraph*     graph;         // query handles if needed
         gfx::IRenderBackend*   device;
-        CmdHandle         cmd; 
+        gfx::CmdHandle         cmd; 
     };
     using ExecuteFn = std::function<void(const ExecCtx&)>;
     ExecuteFn onExecute;
