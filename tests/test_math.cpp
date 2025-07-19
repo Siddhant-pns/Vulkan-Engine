@@ -1,9 +1,9 @@
+#include "core/math/Vec.hpp"
+#include <catch2/catch_approx.hpp>
 #include <catch2/catch_test_macros.hpp>
 #include <catch2/matchers/catch_matchers_floating_point.hpp>
-#include <catch2/catch_approx.hpp>
-#include "core/math/Vec.hpp"
 
-using Catch::Approx; 
+using Catch::Approx;
 
 TEST_CASE("Vec3 arithmetic", "[math]") {
     using core::math::Vec3;

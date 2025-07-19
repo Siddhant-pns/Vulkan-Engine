@@ -1,23 +1,28 @@
 #pragma once
-#include "vk_mem_alloc.h"
 #include "VulkanDevice.h"
+#include "vk_mem_alloc.h"
 
 namespace gfx {
 
 class VulkanAllocator {
-public:
+  public:
     bool init(const backend::VulkanDevice& dev) {
         VmaAllocatorCreateInfo ci{};
         ci.physicalDevice = dev.physical();
-        ci.device         = dev.logical();
-        ci.instance       = dev.instance();
+        ci.device = dev.logical();
+        ci.instance = dev.instance();
         return vmaCreateAllocator(&ci, &m_alloc) == VK_SUCCESS;
     }
-    ~VulkanAllocator() { if (m_alloc) vmaDestroyAllocator(m_alloc); }
+    ~VulkanAllocator() {
+        if (m_alloc)
+            vmaDestroyAllocator(m_alloc);
+    }
 
-    VmaAllocator raw() const { return m_alloc; }
+    VmaAllocator raw() const {
+        return m_alloc;
+    }
 
-private:
+  private:
     VmaAllocator m_alloc{};
 };
 

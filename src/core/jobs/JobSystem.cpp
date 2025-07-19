@@ -5,10 +5,9 @@
 namespace core::jobs {
 
 /* -------------------- public ---------------------------------- */
-void JobSystem::start(std::size_t workerCount)
-{
+void JobSystem::start(std::size_t workerCount) {
     if (s_running.exchange(true))
-        return;                           // already running
+        return; // already running
 
     if (workerCount == 0)
         workerCount = std::max(1u, std::thread::hardware_concurrency() - 1);
@@ -51,21 +50,20 @@ void JobSystem::start(std::size_t workerCount)
     core::util::Logger::info("JobSystem started with %zu workers", workerCount);
 }
 
-void JobSystem::stop()
-{
-    if (!s_running.exchange(false)) return;
+void JobSystem::stop() {
+    if (!s_running.exchange(false))
+        return;
     s_cv.notify_all();
-    for (auto& th : s_threads) if (th.joinable()) th.join();
+    for (auto& th : s_threads)
+        if (th.joinable())
+            th.join();
     s_threads.clear();
     s_queues.clear();
 }
 
-void JobSystem::enqueue(Task&& t)
-{
+void JobSystem::enqueue(Task&& t) {
     /* push onto the smallest queue – trivial load balancing */
-    auto it = std::min_element(
-        s_queues.begin(), s_queues.end(),
-        [](auto& a, auto& b){ return a.size() < b.size(); });
+    auto it = std::min_element(s_queues.begin(), s_queues.end(), [](auto& a, auto& b) { return a.size() < b.size(); });
 
     it->push_back(std::move(t));
     s_cv.notify_one();

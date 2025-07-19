@@ -1,8 +1,8 @@
 #include "VulkanShader.h"
 #include "VulkanUtils.h"
 #include <fstream>
-#include <vector>
 #include <iostream>
+#include <vector>
 
 namespace backend {
 
@@ -38,4 +38,4 @@ void VulkanShader::Destroy(VkDevice device) {
     }
 }
 
-}
+} // namespace backend

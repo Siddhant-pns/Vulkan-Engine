@@ -1,13 +1,11 @@
 #include "VulkanDevice.h"
 #include "VulkanUtils.h"
-#include <iostream>
-#include <vector>
-#include <set>
 #include <cstring> // for strcmp
+#include <iostream>
+#include <set>
+#include <vector>
 
-const std::vector<const char*> requiredExtensions = {
-    VK_KHR_SWAPCHAIN_EXTENSION_NAME
-};
+const std::vector<const char*> requiredExtensions = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
 
 namespace backend {
 
@@ -83,13 +81,11 @@ void VulkanDevice::Create(VkInstance instance, VkSurfaceKHR surface) {
     createInfo.enabledExtensionCount = static_cast<uint32_t>(requiredExtensions.size());
     createInfo.ppEnabledExtensionNames = requiredExtensions.data();
 
-
     VkResult result = vkCreateDevice(m_physicalDevice, &createInfo, nullptr, &m_device);
     m_graphicsFamily = graphicsQueueFamily;
-    volkLoadDevice(m_device);           
+    volkLoadDevice(m_device);
     vkGetDeviceQueue(m_device, graphicsQueueFamily, 0, &m_graphicsQueue);
     backend::CheckVkResult(result, "Failed to create logical m_device");
-
 
     std::cout << "[VulkanDevice] Logical m_device created.\n";
 }
@@ -101,4 +97,4 @@ void VulkanDevice::Destroy() {
     }
 }
 
-}
+} // namespace backend

@@ -1,18 +1,19 @@
 #pragma once
-#include <string>
-#include <vector>
 #include <filesystem>
 #include <fstream>
+#include <string>
+#include <vector>
 
 namespace core::util {
 
 /* Minimal static helpers – grow as needed */
 class FileSystem {
-public:
+  public:
     /* Entire file → std::vector<char>.  Throws on failure. */
     static std::vector<char> readBinary(const std::filesystem::path& p) {
         std::ifstream file(p, std::ios::binary | std::ios::ate);
-        if (!file) throw std::runtime_error("Failed to open file: " + p.string());
+        if (!file)
+            throw std::runtime_error("Failed to open file: " + p.string());
 
         const std::size_t size = static_cast<std::size_t>(file.tellg());
         std::vector<char> data(size);
@@ -26,7 +27,7 @@ public:
     }
 
     static std::filesystem::path exeDirectory() {
-        return std::filesystem::current_path();            // fine for now
+        return std::filesystem::current_path(); // fine for now
     }
 };
 

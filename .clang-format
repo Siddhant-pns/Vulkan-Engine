@@ -1,0 +1,9 @@
+# .clang-format  – "LLVM with a few extras"
+BasedOnStyle:  LLVM
+IndentWidth:   4          # match existing style
+ColumnLimit:   120        # keep long vk structs readable
+AllowShortFunctionsOnASingleLine: None
+SortIncludes:  true
+IncludeBlocks: Preserve    # do NOT reorder our hand-grouped blocks
+DerivePointerAlignment: false
+PointerAlignment: Left

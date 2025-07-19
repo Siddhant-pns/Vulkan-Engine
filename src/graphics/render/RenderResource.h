@@ -1,6 +1,6 @@
 #pragma once
+#include "backend/include/Handles.h"
 #include <string>
-#include "backend/include/Handles.h"   
 #include <variant>
 
 namespace gfx {
@@ -21,8 +21,8 @@ struct BufferDesc {
 };
 
 struct RenderResource {
-    std::string   name;
-    ResourceType  type;
+    std::string name;
+    ResourceType type;
     std::variant<TextureDesc, BufferDesc> desc;
 
     /* backend handle filled during RenderGraph::compile() */

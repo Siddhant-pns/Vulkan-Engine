@@ -1,21 +1,19 @@
-#define VK_NO_PROTOTYPES 
+#define VK_NO_PROTOTYPES
 #include <volk.h>
 
 #include "VulkanInstance.h"
 #include "VulkanUtils.h"
-#include <GLFW/glfw3.h>
 #include "core/util/Logger.h"
+#include <GLFW/glfw3.h>
+#include <cstring>
 #include <iostream>
 #include <vector>
-#include <cstring>
 
-const std::vector<const char*> validationLayers = {
-    "VK_LAYER_KHRONOS_validation"
-};
+const std::vector<const char*> validationLayers = {"VK_LAYER_KHRONOS_validation"};
 
 // Implementations will be filled in later
 namespace backend {
-    void backend::VulkanInstance::Create(bool enableValidation) {
+void backend::VulkanInstance::Create(bool enableValidation) {
 
     std::cout << "[VulkanInstance] Creating Vulkan instance...\n";
 
@@ -56,11 +54,11 @@ namespace backend {
 
     VkResult result = vkCreateInstance(&createInfo, nullptr, &instance);
     if (result != VK_SUCCESS) {
-    std::cerr << "[VulkanInstance] vkCreateInstance FAILED! Code: " << result << "\n";
-    std::exit(EXIT_FAILURE);
-   }else{
-    std::cout << "[VulkanInstance] vkCreateInstance succeeded.\n";
-   }
+        std::cerr << "[VulkanInstance] vkCreateInstance FAILED! Code: " << result << "\n";
+        std::exit(EXIT_FAILURE);
+    } else {
+        std::cout << "[VulkanInstance] vkCreateInstance succeeded.\n";
+    }
     backend::CheckVkResult(result, "Failed to create Vulkan instance");
 
     volkLoadInstance(instance);
@@ -71,10 +69,10 @@ namespace backend {
     std::cout << "[VulkanInstance] Vulkan instance created.\n";
 }
 
-    void backend::VulkanInstance::Destroy() {
+void backend::VulkanInstance::Destroy() {
     if (debugMessenger) {
-        auto destroyDebugUtilsMessengerEXT = (PFN_vkDestroyDebugUtilsMessengerEXT)
-            vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
+        auto destroyDebugUtilsMessengerEXT =
+            (PFN_vkDestroyDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkDestroyDebugUtilsMessengerEXT");
 
         if (destroyDebugUtilsMessengerEXT) {
             destroyDebugUtilsMessengerEXT(instance, debugMessenger, nullptr);
@@ -89,30 +87,25 @@ namespace backend {
     std::cout << "[VulkanInstance] Destroyed Vulkan instance.\n";
 }
 
-
-    void backend::VulkanInstance::SetupDebugMessenger() {
+void backend::VulkanInstance::SetupDebugMessenger() {
     VkDebugUtilsMessengerCreateInfoEXT createInfo{};
     createInfo.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT;
-    createInfo.messageSeverity =
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
+    createInfo.messageSeverity = VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT |
+                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT |
+                                 VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 
-    createInfo.messageType =
-        VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
-        VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
+    createInfo.messageType = VK_DEBUG_UTILS_MESSAGE_TYPE_GENERAL_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_VALIDATION_BIT_EXT |
+                             VK_DEBUG_UTILS_MESSAGE_TYPE_PERFORMANCE_BIT_EXT;
 
-    createInfo.pfnUserCallback = [](VkDebugUtilsMessageSeverityFlagBitsEXT,
-                                    VkDebugUtilsMessageTypeFlagsEXT,
-                                    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                    void*) -> VkBool32 {
+    createInfo.pfnUserCallback = [](VkDebugUtilsMessageSeverityFlagBitsEXT, VkDebugUtilsMessageTypeFlagsEXT,
+                                    const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData, void*) -> VkBool32 {
         std::cerr << "[Validation] " << pCallbackData->pMessage << "\n";
         return VK_FALSE;
     };
 
-    auto createDebugUtilsMessengerEXT = (PFN_vkCreateDebugUtilsMessengerEXT)
-        vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
+    auto createDebugUtilsMessengerEXT =
+        (PFN_vkCreateDebugUtilsMessengerEXT)vkGetInstanceProcAddr(instance, "vkCreateDebugUtilsMessengerEXT");
 
     if (createDebugUtilsMessengerEXT &&
         createDebugUtilsMessengerEXT(instance, &createInfo, nullptr, &debugMessenger) == VK_SUCCESS) {
@@ -122,8 +115,7 @@ namespace backend {
     }
 }
 
-
-    bool backend::VulkanInstance::CheckValidationSupport() {
+bool backend::VulkanInstance::CheckValidationSupport() {
     uint32_t layerCount;
     vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
 
@@ -138,14 +130,14 @@ namespace backend {
                 break;
             }
         }
-        if (!found) return false;
+        if (!found)
+            return false;
     }
 
     return true;
 }
 
-
-    std::vector<const char*> backend::VulkanInstance::GetRequiredExtensions() {
+std::vector<const char*> backend::VulkanInstance::GetRequiredExtensions() {
     uint32_t glfwExtensionCount = 0;
     const char** glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
 
@@ -156,5 +148,4 @@ namespace backend {
     return extensions;
 }
 
-
-}
+} // namespace backend

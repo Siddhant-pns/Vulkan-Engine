@@ -1,7 +1,7 @@
 #pragma once
-#include <volk.h>
 #include <string>
+#include <volk.h>
 
 namespace backend {
-    void CheckVkResult(VkResult result, const std::string& message);
+void CheckVkResult(VkResult result, const std::string& message);
 }

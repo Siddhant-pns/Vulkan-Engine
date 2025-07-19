@@ -9,7 +9,8 @@
 
 namespace backend {
 
-void VulkanTexture::LoadFromFile(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool cmdPool, VkQueue queue, const std::string& path) {
+void VulkanTexture::LoadFromFile(VkDevice device, VkPhysicalDevice physicalDevice, VkCommandPool cmdPool, VkQueue queue,
+                                 const std::string& path) {
     deviceRef = device;
     physicalRef = physicalDevice;
 
@@ -38,7 +39,8 @@ void VulkanTexture::LoadFromFile(VkDevice device, VkPhysicalDevice physicalDevic
     VkMemoryAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO;
     allocInfo.allocationSize = memReqs.size;
-    allocInfo.memoryTypeIndex = FindMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    allocInfo.memoryTypeIndex = FindMemoryType(memReqs.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                                                                           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
 
     vkAllocateMemory(device, &allocInfo, nullptr, &stagingMemory);
     vkBindBufferMemory(device, stagingBuffer, stagingMemory, 0);
@@ -53,7 +55,7 @@ void VulkanTexture::LoadFromFile(VkDevice device, VkPhysicalDevice physicalDevic
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
-    imageInfo.extent = { (uint32_t)texWidth, (uint32_t)texHeight, 1 };
+    imageInfo.extent = {(uint32_t)texWidth, (uint32_t)texHeight, 1};
     imageInfo.mipLevels = 1;
     imageInfo.arrayLayers = 1;
     imageInfo.format = VK_FORMAT_R8G8B8A8_SRGB;
@@ -72,9 +74,11 @@ void VulkanTexture::LoadFromFile(VkDevice device, VkPhysicalDevice physicalDevic
     vkBindImageMemory(device, image, imageMemory, 0);
 
     // Transition and copy
-    TransitionImageLayout(cmdPool, queue, image, imageInfo.format, VK_IMAGE_LAYOUT_UNDEFINED, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
+    TransitionImageLayout(cmdPool, queue, image, imageInfo.format, VK_IMAGE_LAYOUT_UNDEFINED,
+                          VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL);
     CopyBufferToImage(cmdPool, queue, stagingBuffer, image, texWidth, texHeight);
-    TransitionImageLayout(cmdPool, queue, image, imageInfo.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+    TransitionImageLayout(cmdPool, queue, image, imageInfo.format, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+                          VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
 
     // Cleanup staging
     vkDestroyBuffer(device, stagingBuffer, nullptr);
@@ -111,10 +115,14 @@ void VulkanTexture::LoadFromFile(VkDevice device, VkPhysicalDevice physicalDevic
 }
 
 void VulkanTexture::Destroy(VkDevice device) {
-    if (sampler) vkDestroySampler(device, sampler, nullptr);
-    if (imageView) vkDestroyImageView(device, imageView, nullptr);
-    if (image) vkDestroyImage(device, image, nullptr);
-    if (imageMemory) vkFreeMemory(device, imageMemory, nullptr);
+    if (sampler)
+        vkDestroySampler(device, sampler, nullptr);
+    if (imageView)
+        vkDestroyImageView(device, imageView, nullptr);
+    if (image)
+        vkDestroyImage(device, image, nullptr);
+    if (imageMemory)
+        vkFreeMemory(device, imageMemory, nullptr);
 }
 
 uint32_t VulkanTexture::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties) {
@@ -128,7 +136,8 @@ uint32_t VulkanTexture::FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlag
     throw std::runtime_error("Failed to find suitable memory type!");
 }
 
-void VulkanTexture::TransitionImageLayout(VkCommandPool cmdPool, VkQueue queue, VkImage image, VkFormat format, VkImageLayout oldLayout, VkImageLayout newLayout) {
+void VulkanTexture::TransitionImageLayout(VkCommandPool cmdPool, VkQueue queue, VkImage image, VkFormat format,
+                                          VkImageLayout oldLayout, VkImageLayout newLayout) {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -159,8 +168,8 @@ void VulkanTexture::TransitionImageLayout(VkCommandPool cmdPool, VkQueue queue, 
     barrier.srcAccessMask = 0;
     barrier.dstAccessMask = 0;
 
-    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT,
-                         0, 0, nullptr, 0, nullptr, 1, &barrier);
+    vkCmdPipelineBarrier(cmd, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, nullptr, 0,
+                         nullptr, 1, &barrier);
 
     vkEndCommandBuffer(cmd);
 
@@ -174,7 +183,8 @@ void VulkanTexture::TransitionImageLayout(VkCommandPool cmdPool, VkQueue queue, 
     vkFreeCommandBuffers(deviceRef, cmdPool, 1, &cmd);
 }
 
-void VulkanTexture::CopyBufferToImage(VkCommandPool cmdPool, VkQueue queue, VkBuffer buffer, VkImage image, uint32_t width, uint32_t height) {
+void VulkanTexture::CopyBufferToImage(VkCommandPool cmdPool, VkQueue queue, VkBuffer buffer, VkImage image,
+                                      uint32_t width, uint32_t height) {
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
     allocInfo.level = VK_COMMAND_BUFFER_LEVEL_PRIMARY;
@@ -197,8 +207,8 @@ void VulkanTexture::CopyBufferToImage(VkCommandPool cmdPool, VkQueue queue, VkBu
     copy.imageSubresource.mipLevel = 0;
     copy.imageSubresource.baseArrayLayer = 0;
     copy.imageSubresource.layerCount = 1;
-    copy.imageOffset = { 0, 0, 0 };
-    copy.imageExtent = { width, height, 1 };
+    copy.imageOffset = {0, 0, 0};
+    copy.imageExtent = {width, height, 1};
 
     vkCmdCopyBufferToImage(cmd, buffer, image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &copy);
     vkEndCommandBuffer(cmd);
@@ -212,4 +222,4 @@ void VulkanTexture::CopyBufferToImage(VkCommandPool cmdPool, VkQueue queue, VkBu
     vkFreeCommandBuffers(deviceRef, cmdPool, 1, &cmd);
 }
 
-}
+} // namespace backend

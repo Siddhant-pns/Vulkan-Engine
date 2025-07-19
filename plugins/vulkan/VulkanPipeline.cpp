@@ -1,6 +1,6 @@
 #include "VulkanPipeline.h"
-#include "VulkanUtils.h"
 #include "Vertex.h"
+#include "VulkanUtils.h"
 #include <iostream>
 
 namespace backend {
@@ -14,8 +14,7 @@ void VulkanPipeline::CreateRenderPass(VkDevice device, VkFormat swapchainFormat,
     colorAttachment.stencilLoadOp = VK_ATTACHMENT_LOAD_OP_DONT_CARE;
     colorAttachment.stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE;
     colorAttachment.initialLayout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL;
-    colorAttachment.finalLayout   = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
-
+    colorAttachment.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
 
     VkAttachmentDescription depthAttachment{};
     depthAttachment.format = depthFormat;
@@ -41,7 +40,7 @@ void VulkanPipeline::CreateRenderPass(VkDevice device, VkFormat swapchainFormat,
     subpass.pColorAttachments = &colorRef;
     subpass.pDepthStencilAttachment = &depthRef;
 
-    std::array<VkAttachmentDescription, 2> attachments = { colorAttachment, depthAttachment };
+    std::array<VkAttachmentDescription, 2> attachments = {colorAttachment, depthAttachment};
 
     VkRenderPassCreateInfo info{};
     info.sType = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO;
@@ -54,7 +53,6 @@ void VulkanPipeline::CreateRenderPass(VkDevice device, VkFormat swapchainFormat,
     std::cout << "[VulkanPipeline] Render pass created.\n";
 }
 
-
 void VulkanPipeline::CreateFramebuffers(VkDevice device, VkExtent2D extent,
                                         const std::vector<VkImageView>& swapchainImageViews,
                                         VkImageView depthImageView) {
@@ -62,10 +60,7 @@ void VulkanPipeline::CreateFramebuffers(VkDevice device, VkExtent2D extent,
     framebuffers.reserve(swapchainImageViews.size());
 
     for (const auto& view : swapchainImageViews) {
-        std::array<VkImageView, 2> attachments = {
-            view,
-            depthImageView
-        };
+        std::array<VkImageView, 2> attachments = {view, depthImageView};
 
         VkFramebufferCreateInfo fbInfo{};
         fbInfo.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
@@ -84,10 +79,9 @@ void VulkanPipeline::CreateFramebuffers(VkDevice device, VkExtent2D extent,
     std::cout << "[VulkanPipeline] " << framebuffers.size() << " framebuffers created.\n";
 }
 
-
 void VulkanPipeline::Destroy(VkDevice device) {
-    
-    for (auto& fb : framebuffers){
+
+    for (auto& fb : framebuffers) {
         vkDestroyFramebuffer(device, fb, nullptr);
     }
     framebuffers.clear();
@@ -98,8 +92,8 @@ void VulkanPipeline::Destroy(VkDevice device) {
     }
 
     if (pipeline) {
-    vkDestroyPipeline(device, pipeline, nullptr);
-    pipeline = VK_NULL_HANDLE;
+        vkDestroyPipeline(device, pipeline, nullptr);
+        pipeline = VK_NULL_HANDLE;
     }
     if (layout) {
         vkDestroyPipelineLayout(device, layout, nullptr);
@@ -110,7 +104,8 @@ void VulkanPipeline::Destroy(VkDevice device) {
 }
 
 void VulkanPipeline::CreateGraphicsPipeline(VkDevice device, VkExtent2D extent, VkRenderPass renderPass,
-                                            VkShaderModule vertShader, VkShaderModule fragShader, VkDescriptorSetLayout layout0, VkDescriptorSetLayout layout1) {
+                                            VkShaderModule vertShader, VkShaderModule fragShader,
+                                            VkDescriptorSetLayout layout0, VkDescriptorSetLayout layout1) {
     // Shader stages
     VkPipelineShaderStageCreateInfo vertStage{};
     vertStage.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
@@ -124,7 +119,7 @@ void VulkanPipeline::CreateGraphicsPipeline(VkDevice device, VkExtent2D extent, 
     fragStage.module = fragShader;
     fragStage.pName = "main";
 
-    VkPipelineShaderStageCreateInfo stages[] = { vertStage, fragStage };
+    VkPipelineShaderStageCreateInfo stages[] = {vertStage, fragStage};
 
     // Vertex input state
     auto bindingDescription = Vertex::GetBindingDescription();
@@ -150,7 +145,7 @@ void VulkanPipeline::CreateGraphicsPipeline(VkDevice device, VkExtent2D extent, 
     viewport.maxDepth = 1.0f;
 
     VkRect2D scissor{};
-    scissor.offset = { 0, 0 };
+    scissor.offset = {0, 0};
     scissor.extent = extent;
 
     VkPipelineViewportStateCreateInfo viewportState{};
@@ -165,7 +160,7 @@ void VulkanPipeline::CreateGraphicsPipeline(VkDevice device, VkExtent2D extent, 
     raster.polygonMode = VK_POLYGON_MODE_FILL;
     raster.lineWidth = 1.0f;
     raster.cullMode = VK_CULL_MODE_BACK_BIT;
-    raster.frontFace = VK_FRONT_FACE_CLOCKWISE; 
+    raster.frontFace = VK_FRONT_FACE_CLOCKWISE;
 
     VkPipelineDepthStencilStateCreateInfo depthStencil{};
     depthStencil.sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
@@ -180,29 +175,27 @@ void VulkanPipeline::CreateGraphicsPipeline(VkDevice device, VkExtent2D extent, 
     multisample.rasterizationSamples = VK_SAMPLE_COUNT_1_BIT;
 
     VkPipelineColorBlendAttachmentState colorBlendAttachment{};
-    colorBlendAttachment.colorWriteMask = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT |
-                                          VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+    colorBlendAttachment.colorWriteMask =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
 
     VkPipelineColorBlendStateCreateInfo colorBlend{};
     colorBlend.sType = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO;
     colorBlend.attachmentCount = 1;
     colorBlend.pAttachments = &colorBlendAttachment;
-    
+
     VkPushConstantRange pushRange{};
     pushRange.stageFlags = VK_SHADER_STAGE_VERTEX_BIT;
     pushRange.offset = 0;
     pushRange.size = sizeof(glm::mat4);
 
-    std::array<VkDescriptorSetLayout, 2> setLayouts = { layout0, layout1 };
-    VkPipelineLayoutCreateInfo layoutInfo{ VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO };
+    std::array<VkDescriptorSetLayout, 2> setLayouts = {layout0, layout1};
+    VkPipelineLayoutCreateInfo layoutInfo{VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
     layoutInfo.setLayoutCount = static_cast<uint32_t>(setLayouts.size());
     layoutInfo.pSetLayouts = setLayouts.data();
     layoutInfo.pushConstantRangeCount = 1;
     layoutInfo.pPushConstantRanges = &pushRange;
 
-
-    CheckVkResult(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &layout),
-                  "Failed to create pipeline layout");
+    CheckVkResult(vkCreatePipelineLayout(device, &layoutInfo, nullptr, &layout), "Failed to create pipeline layout");
 
     VkGraphicsPipelineCreateInfo pipelineInfo{};
     pipelineInfo.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
@@ -225,5 +218,4 @@ void VulkanPipeline::CreateGraphicsPipeline(VkDevice device, VkExtent2D extent, 
     std::cout << "[VulkanPipeline] Graphics pipeline created.\n";
 }
 
-
-}
+} // namespace backend

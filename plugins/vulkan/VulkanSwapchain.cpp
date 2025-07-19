@@ -4,8 +4,8 @@
 
 namespace backend {
 
-void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface,
-                            VkExtent2D size, VkCommandPool commandPool, VkQueue graphicsQueue) {
+void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, VkSurfaceKHR surface, VkExtent2D size,
+                             VkCommandPool commandPool, VkQueue graphicsQueue) {
     std::cout << "[VulkanSwapchain] Creating swapchain...\n";
     deviceRef = device;
     physicalDeviceRef = physicalDevice;
@@ -43,8 +43,7 @@ void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, V
     createInfo.imageColorSpace = surfaceFormat.colorSpace;
     createInfo.imageExtent = extent;
     createInfo.imageArrayLayers = 1;
-    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                            VK_IMAGE_USAGE_TRANSFER_DST_BIT; // for blitting
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT; // for blitting
 
     createInfo.imageSharingMode = VK_SHARING_MODE_EXCLUSIVE;
     createInfo.preTransform = capabilities.currentTransform;
@@ -53,8 +52,7 @@ void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, V
     createInfo.clipped = VK_TRUE;
     createInfo.oldSwapchain = VK_NULL_HANDLE;
 
-    CheckVkResult(vkCreateSwapchainKHR(deviceRef, &createInfo, nullptr, &swapchain),
-                  "Failed to create swapchain");
+    CheckVkResult(vkCreateSwapchainKHR(deviceRef, &createInfo, nullptr, &swapchain), "Failed to create swapchain");
 
     // Get swapchain images
     uint32_t actualImageCount = 0;
@@ -70,34 +68,27 @@ void VulkanSwapchain::Create(VkPhysicalDevice physicalDevice, VkDevice device, V
         viewInfo.image = images[i];
         viewInfo.viewType = VK_IMAGE_VIEW_TYPE_2D;
         viewInfo.format = imageFormat;
-        viewInfo.components = {
-            VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
-            VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY
-        };
+        viewInfo.components = {VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY,
+                               VK_COMPONENT_SWIZZLE_IDENTITY, VK_COMPONENT_SWIZZLE_IDENTITY};
         viewInfo.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
         viewInfo.subresourceRange.baseMipLevel = 0;
         viewInfo.subresourceRange.levelCount = 1;
         viewInfo.subresourceRange.baseArrayLayer = 0;
         viewInfo.subresourceRange.layerCount = 1;
 
-        CheckVkResult(vkCreateImageView(deviceRef, &viewInfo, nullptr, &imageViews[i]),
-                      "Failed to create image view");
+        CheckVkResult(vkCreateImageView(deviceRef, &viewInfo, nullptr, &imageViews[i]), "Failed to create image view");
     }
 
     // Create depth resources
     depthFormat = FindDepthFormat(physicalDeviceRef);
     CreateDepthResources(device, physicalDevice, extent, commandPool, graphicsQueue);
 
-
     std::cout << "[VulkanSwapchain] Swapchain created with " << imageViews.size() << " image views.\n";
 }
 
 VkFormat VulkanSwapchain::FindDepthFormat(VkPhysicalDevice physical) {
-    std::vector<VkFormat> candidates = {
-        VK_FORMAT_D32_SFLOAT,
-        VK_FORMAT_D32_SFLOAT_S8_UINT,
-        VK_FORMAT_D24_UNORM_S8_UINT
-    };
+    std::vector<VkFormat> candidates = {VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT,
+                                        VK_FORMAT_D24_UNORM_S8_UINT};
 
     for (VkFormat format : candidates) {
         VkFormatProperties props;
@@ -109,8 +100,9 @@ VkFormat VulkanSwapchain::FindDepthFormat(VkPhysicalDevice physical) {
 
     throw std::runtime_error("Failed to find supported depth format!");
 }
- 
-void VulkanSwapchain::CreateDepthResources(VkDevice device, VkPhysicalDevice physical, VkExtent2D extent, VkCommandPool commandPool, VkQueue queue) {
+
+void VulkanSwapchain::CreateDepthResources(VkDevice device, VkPhysicalDevice physical, VkExtent2D extent,
+                                           VkCommandPool commandPool, VkQueue queue) {
     VkImageCreateInfo imageInfo{};
     imageInfo.sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO;
     imageInfo.imageType = VK_IMAGE_TYPE_2D;
@@ -161,13 +153,14 @@ void VulkanSwapchain::CreateDepthResources(VkDevice device, VkPhysicalDevice phy
     CheckVkResult(vkCreateImageView(device, &viewInfo, nullptr, &depthImageView), "Failed to create depth image view");
 }
 
-
-
 void VulkanSwapchain::Destroy() {
 
-    if (depthImageView) vkDestroyImageView(deviceRef, depthImageView, nullptr);
-    if (depthImage) vkDestroyImage(deviceRef, depthImage, nullptr);
-    if (depthImageMemory) vkFreeMemory(deviceRef, depthImageMemory, nullptr);
+    if (depthImageView)
+        vkDestroyImageView(deviceRef, depthImageView, nullptr);
+    if (depthImage)
+        vkDestroyImage(deviceRef, depthImage, nullptr);
+    if (depthImageMemory)
+        vkFreeMemory(deviceRef, depthImageMemory, nullptr);
 
     for (auto& view : imageViews) {
         vkDestroyImageView(deviceRef, view, nullptr);
@@ -194,7 +187,8 @@ VkSurfaceFormatKHR VulkanSwapchain::ChooseSurfaceFormat(const std::vector<VkSurf
 
 VkPresentModeKHR VulkanSwapchain::ChoosePresentMode(const std::vector<VkPresentModeKHR>& modes) {
     for (const auto& m : modes) {
-        if (m == VK_PRESENT_MODE_MAILBOX_KHR) return m; // triple buffering
+        if (m == VK_PRESENT_MODE_MAILBOX_KHR)
+            return m; // triple buffering
     }
     return VK_PRESENT_MODE_FIFO_KHR; // always supported
 }
@@ -209,13 +203,13 @@ VkExtent2D VulkanSwapchain::ChooseExtent(const VkSurfaceCapabilitiesKHR& capabil
 // if (capabilities.currentExtent.width != UINT32_MAX) {
 //         extent = capabilities.currentExtent; // Already defined by surface
 //     } else {
-        
-//         extent.width  = std::clamp((uint32_t)win->width(), capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
-//         extent.height = std::clamp((uint32_t)win->height(), capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+
+//         extent.width  = std::clamp((uint32_t)win->width(), capabilities.minImageExtent.width,
+//         capabilities.maxImageExtent.width); extent.height = std::clamp((uint32_t)win->height(),
+//         capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
 //     }
 void VulkanSwapchain::SetCommandPool(VkCommandPool pool) {
     commandPool = pool;
 }
 
-
-}
+} // namespace backend

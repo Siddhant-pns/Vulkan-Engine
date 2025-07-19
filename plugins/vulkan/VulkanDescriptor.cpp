@@ -1,7 +1,7 @@
 #include "VulkanDescriptor.h"
 #include "VulkanUtils.h"
-#include <iostream>
 #include <array>
+#include <iostream>
 
 namespace backend {
 
@@ -22,8 +22,8 @@ void VulkanDescriptor::Create(VkDevice device) {
     uboBinding.stageFlags = VK_SHADER_STAGE_VERTEX_BIT; // ✅ FIXED HERE
     uboBinding.pImmutableSamplers = nullptr;
 
-    std::array<VkDescriptorSetLayoutBinding, 1> samplerBindings = { samplerBinding };
-    std::array<VkDescriptorSetLayoutBinding, 1> uboBindings = { uboBinding };
+    std::array<VkDescriptorSetLayoutBinding, 1> samplerBindings = {samplerBinding};
+    std::array<VkDescriptorSetLayoutBinding, 1> uboBindings = {uboBinding};
 
     VkDescriptorSetLayoutCreateInfo samplerLayoutInfo{};
     samplerLayoutInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO;
@@ -36,9 +36,9 @@ void VulkanDescriptor::Create(VkDevice device) {
     uboLayoutInfo.pBindings = uboBindings.data();
 
     CheckVkResult(vkCreateDescriptorSetLayout(device, &samplerLayoutInfo, nullptr, &layout0),
-        "Failed to create descriptor set layout 0");
+                  "Failed to create descriptor set layout 0");
     CheckVkResult(vkCreateDescriptorSetLayout(device, &uboLayoutInfo, nullptr, &layout1),
-        "Failed to create descriptor set layout 1");
+                  "Failed to create descriptor set layout 1");
 
     // Create descriptor pool
     std::array<VkDescriptorPoolSize, 2> poolSizes{};
@@ -102,9 +102,12 @@ void VulkanDescriptor::Update(VkDevice device, const VkDescriptorBufferInfo& buf
 }
 
 void VulkanDescriptor::Destroy(VkDevice device) {
-    if (layout0) vkDestroyDescriptorSetLayout(device, layout0, nullptr);
-    if (layout1) vkDestroyDescriptorSetLayout(device, layout1, nullptr);
-    if (pool) vkDestroyDescriptorPool(device, pool, nullptr);
+    if (layout0)
+        vkDestroyDescriptorSetLayout(device, layout0, nullptr);
+    if (layout1)
+        vkDestroyDescriptorSetLayout(device, layout1, nullptr);
+    if (pool)
+        vkDestroyDescriptorPool(device, pool, nullptr);
 }
 
-}
+} // namespace backend

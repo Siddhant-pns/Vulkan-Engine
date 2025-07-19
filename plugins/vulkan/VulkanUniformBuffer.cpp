@@ -1,15 +1,15 @@
 #include "VulkanUniformBuffer.h"
 #include "VulkanUtils.h"
-#include <stdexcept>
 #include <cstring>
+#include <stdexcept>
 
 namespace backend {
 
 void VulkanUniformBuffer::Create(VkDevice device, VkPhysicalDevice physical, size_t bufferSize, size_t inFrameCount) {
     frameCount = inFrameCount;
-    m_count = inFrameCount;  
-    m_stride = alignTo(bufferSize, 256);                // std140 align
-    m_size   = m_stride * m_count;
+    m_count = inFrameCount;
+    m_stride = alignTo(bufferSize, 256); // std140 align
+    m_size = m_stride * m_count;
     buffers.resize(frameCount);
     memories.resize(frameCount);
 
@@ -33,37 +33,38 @@ void VulkanUniformBuffer::Create(VkDevice device, VkPhysicalDevice physical, siz
         vkGetPhysicalDeviceMemoryProperties(physical, &memProps);
 
         bool found = false;
-        const VkMemoryPropertyFlags wanted =
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
+        const VkMemoryPropertyFlags wanted = VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT;
 
         for (uint32_t j = 0; j < memProps.memoryTypeCount; ++j) {
-            if ( (memReq.memoryTypeBits & (1u << j)) &&
-                ( (memProps.memoryTypes[j].propertyFlags & wanted) == wanted ) ) {
+            if ((memReq.memoryTypeBits & (1u << j)) && ((memProps.memoryTypes[j].propertyFlags & wanted) == wanted)) {
                 allocInfo.memoryTypeIndex = j;
                 found = true;
                 break;
             }
         }
 
-        if (!found) throw std::runtime_error("Failed to find suitable memory type for uniform buffer");
+        if (!found)
+            throw std::runtime_error("Failed to find suitable memory type for uniform buffer");
 
-        CheckVkResult(vkAllocateMemory(device, &allocInfo, nullptr, &memories[i]), "Failed to allocate uniform buffer memory");
+        CheckVkResult(vkAllocateMemory(device, &allocInfo, nullptr, &memories[i]),
+                      "Failed to allocate uniform buffer memory");
         CheckVkResult(vkBindBufferMemory(device, buffers[i], memories[i], 0), "Failed to bind uniform buffer memory");
     }
 }
 
 void VulkanUniformBuffer::Destroy(VkDevice device) {
     for (size_t i = 0; i < frameCount; ++i) {
-        if (buffers[i]) vkDestroyBuffer(device, buffers[i], nullptr);
-        if (memories[i]) vkFreeMemory(device, memories[i], nullptr);
+        if (buffers[i])
+            vkDestroyBuffer(device, buffers[i], nullptr);
+        if (memories[i])
+            vkFreeMemory(device, memories[i], nullptr);
     }
     buffers.clear();
     memories.clear();
     frameCount = 0;
 }
 
-void VulkanUniformBuffer::Update(VkDevice device,uint32_t currentFrame, const void* data, size_t size) {
+void VulkanUniformBuffer::Update(VkDevice device, uint32_t currentFrame, const void* data, size_t size) {
     void* mapped;
     vkMapMemory(device, memories[currentFrame], 0, size, 0, &mapped);
     std::memcpy(mapped, data, size);
@@ -78,4 +79,4 @@ VkDescriptorBufferInfo VulkanUniformBuffer::GetDescriptorInfo(uint32_t frame) co
     return info;
 }
 
-}
+} // namespace backend

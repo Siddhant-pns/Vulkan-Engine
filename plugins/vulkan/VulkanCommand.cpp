@@ -10,8 +10,7 @@ void VulkanCommand::Create(VkDevice device, uint32_t queueFamilyIndex, uint32_t 
     poolInfo.flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT;
     poolInfo.queueFamilyIndex = queueFamilyIndex;
 
-    CheckVkResult(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool),
-                  "Failed to create command pool");
+    CheckVkResult(vkCreateCommandPool(device, &poolInfo, nullptr, &commandPool), "Failed to create command pool");
 
     VkCommandBufferAllocateInfo allocInfo{};
     allocInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO;
@@ -27,11 +26,10 @@ void VulkanCommand::Create(VkDevice device, uint32_t queueFamilyIndex, uint32_t 
 }
 
 void VulkanCommand::Destroy(VkDevice device) {
-    if (!commandPool) return;
+    if (!commandPool)
+        return;
     if (!commandBuffers.empty())
-        vkFreeCommandBuffers(device, commandPool,
-                             static_cast<uint32_t>(commandBuffers.size()),
-                             commandBuffers.data());
+        vkFreeCommandBuffers(device, commandPool, static_cast<uint32_t>(commandBuffers.size()), commandBuffers.data());
 
     vkResetCommandPool(device, commandPool, 0);
     vkDestroyCommandPool(device, commandPool, nullptr);
@@ -45,9 +43,9 @@ VkCommandBuffer VulkanCommand::Get(uint32_t index) const {
     return commandBuffers.at(index);
 }
 
-void VulkanCommand::Reset(VkDevice dev)
-{
-    if (commandPool) vkResetCommandPool(dev, commandPool, 0);
+void VulkanCommand::Reset(VkDevice dev) {
+    if (commandPool)
+        vkResetCommandPool(dev, commandPool, 0);
 }
 
-}
+} // namespace backend
